@@ -73,16 +73,14 @@
       <br />
       <span class="affiliation"><span class="institution"><img class="affiliation-logo affiliation-logo--meta" src="assets/affiliations/meta.svg?v=20261124z" alt="" />Reality Labs Research, Meta</span><span class="institution"><img class="affiliation-logo affiliation-logo--uva" src="assets/affiliations/uva.png?v=20261124z" alt="" />University of Virginia</span></span>
     </p>
-    <!-- Resource links. arXiv and Paper: set href, drop is-pending / aria-disabled / tabindex once they are online.
-         Code and Checkpoints point at the private facebookresearch / Hugging Face repositories until release. -->
     <div class="hero-actions">
       <!-- live demo: demo.html forwards to the current Gradio link, which the demo's supervisor
            (demo branch, evaluation/scale4d_demo/serve.py) writes to demo.json on the server; js/main.js shows this
            button and points it straight at that link once demo.json is read (no demo.json, e.g. on GitHub Pages: no button) -->
       <a class="btn btn--res btn--demo" id="demoBtn" href="demo.html" target="_blank" rel="noopener" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true" class="fill"><path d="M8 5.2v13.6a.8.8 0 0 0 1.2.7l10.6-6.8a.8.8 0 0 0 0-1.4L9.2 4.5A.8.8 0 0 0 8 5.2z" /></svg>Demo</a>
-      <a class="btn btn--res is-pending" aria-disabled="true" tabindex="-1" title="Coming soon">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h9l5 5v13H5z" /><path d="M14 3v5h5M8.5 13.5l7 5M15.5 13.5l-7 5" /></svg>arXiv</a>
+      <a class="btn btn--res" href="scale4d.pdf" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h9l5 5v13H5z" /><path d="M14 3v5h5M8 13h8M8 17h6" /></svg>Technical Report</a>
       <a class="btn btn--res" href="scale4d.pdf" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h9l5 5v13H5z" /><path d="M14 3v5h5M8 13h8M8 17h6" /></svg>Paper</a>
       <a class="btn btn--res" href="https://github.com/facebookresearch/rlr_scale4d" target="_blank" rel="noopener">
