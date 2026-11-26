@@ -1,5 +1,5 @@
 <div align="center">
-<img src=".github/assets/title-banner.png" alt="SCALE4D" width="100%">
+<h1>SCALE4D</h1>
 <h3>Metric 4D Modeling for Embodied Perception</h3>
 
 <p>
