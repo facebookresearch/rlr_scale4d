@@ -45,8 +45,10 @@ synchronized with the repository's corresponding files.
   `assets/logometa.pdf` (the same infinity-symbol crop) and `assets/logouva.png`, exported to `assets/affiliations/`.
 - The supplementary video appears at the end of section 01, before Explore in 4D. Its native player loads
   `examples/supplementary_video/video/scale4d_supplementary_v23_1440p.mp4` directly from `facebook/SCALE4D` on Hugging Face.
-  The HF repository is private and gated, so playback depends on access to that source. The link below the player
-  opens the video on Hugging Face. This video is not included in the Pages asset bundle.
+  The HF repository is public (not gated) since 2026-11-25. The player shows `assets/supp_poster.jpg`, the video's
+  title card at 1.0 s, and loads the video's header at once (`preload="metadata"`; the file starts with its index,
+  so playback starts without downloading the 143 MB first). The link below the player opens the video on Hugging
+  Face. This video is not included in the Pages asset bundle.
 - Benchmarks read `assets/data/results.json`, generated from the paper's LaTeX tables. Never type a score by hand.
 - The comparison panels show the 160k checkpoint. The old Explore viewer (Viewer4D, `assets/scenes`, 160k) was replaced on 2026-11-12 by the gallery below; its files stay in the repo.
 - The hero video is the apartment film v4.4 (textured GT room mesh, rigid tray), cut at 70.5 s, faces blurred with
