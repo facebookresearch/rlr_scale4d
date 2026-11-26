@@ -1,0 +1,45 @@
+<!doctype html>
+<!--
+  Copyright (c) Meta Platforms, Inc. and affiliates.
+  All rights reserved.
+  
+  This source code is licensed under the license found in the
+  LICENSE file in the root directory of this source tree.
+-->
+
+<meta charset="utf-8" />
+<title>capture</title>
+<style>html, body { margin: 0; background: #0a0a0a; } canvas { display: block; }</style>
+<div id="box"><canvas id="c"></canvas></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegmentsGeometry.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineMaterial.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegments2.js"></script>
+<script src="../js/viewer4d.js"></script>
+<script>
+  // Driven over CDP by render_hero.py: capture.load(key, w, h), then capture.frame(t, yaw, pitch, zoom).
+  const canvas = document.getElementById("c");
+  let v = null;
+  window.capture = {
+    async load(key, w, h) {
+      canvas.style.width = `${w}px`; canvas.style.height = `${h}px`;
+      v = v || new Viewer4D(canvas, { capture: true, pixelRatio: 1, sway: false, background: 0x0a0a0a });
+      v.resize(w, h);
+      await v.load("../assets/scenes", key);
+      v.showCam = false;
+      return v.data.frames;
+    },
+    frame(t, yaw, pitch, zoom, lift = 0) {
+      v.setTime(t);
+      const tgt = v.controls.target.clone().addScaledVector(v.camera.up, lift);
+      let d = v.base.clone().applyAxisAngle(v.camera.up, THREE.MathUtils.degToRad(yaw));
+      const side = new THREE.Vector3().crossVectors(d, v.camera.up).normalize();
+      d.applyAxisAngle(side, THREE.MathUtils.degToRad(pitch)).multiplyScalar(zoom);
+      v.camera.position.copy(tgt).add(d);
+      v.camera.lookAt(tgt);
+      v.draw();
+      return canvas.toDataURL("image/jpeg", 0.95);
+    },
+  };
+</script>

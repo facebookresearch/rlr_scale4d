@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<!--
+  Copyright (c) Meta Platforms, Inc. and affiliates.
+  All rights reserved.
+  
+  This source code is licensed under the license found in the
+  LICENSE file in the root directory of this source tree.
+-->
+
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SCALE4D live demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet" />
+<!-- Forwards to the demo's current Gradio share link. The link changes about once a week; the demo's supervisor
+     (demo branch, evaluation/scale4d_demo/serve.py) writes it to demo.json next to this page. -->
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0b0b0c; color: #f3f3f3;
+         font-family: "Instrument Sans", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; }
+  main { text-align: center; padding: 2rem; }
+  .k { margin: 0 0 0.8rem; font-size: 0.85rem; letter-spacing: 0.14em; color: #9a9a9a; }
+  .k span { color: #ff8a3d; }
+  h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 500; letter-spacing: -0.03em; }
+  p#msg { margin: 1rem 0 0; color: #b5b5b5; }
+  a { color: #fff; }
+</style>
+</head>
+<body>
+<main>
+  <p class="k">SCALE<span>4D</span></p>
+  <h1>Opening the live demo</h1>
+  <p id="msg">One moment.</p>
+</main>
+<script>
+  fetch(`demo.json?t=${Date.now()}`, { cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+    .then((d) => {
+      if (!/^https:\/\/[a-z0-9]+\.gradio\.live\/?$/.test(d.url || "")) throw new Error("no link");
+      location.replace(d.url);
+    })
+    .catch(() => {
+      document.getElementById("msg").innerHTML = 'The demo is restarting. Please try again in a minute, or go <a href="index.html">back to the project page</a>.';
+    });
+</script>
+</body>
+</html>

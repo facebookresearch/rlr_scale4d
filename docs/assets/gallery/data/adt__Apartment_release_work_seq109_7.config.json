@@ -1,0 +1,64 @@
+{
+  "seg": {
+    "motion_frac": 0.3,
+    "motion_m": 0,
+    "cluster_eps": 0.08,
+    "cluster_min": 20,
+    "frame0_only": false,
+    "method": "motion",
+    "sam_prompts": ""
+  },
+  "drop": {
+    "min_conf": 0.6,
+    "edge_tol": 3,
+    "min_group": 10
+  },
+  "display": {
+    "dense": true,
+    "dense_size": 1.3,
+    "static_tracks": false,
+    "mover_color": "rgb",
+    "trail": 24,
+    "max_traces": 600,
+    "line_width": 1.8,
+    "trail_alpha": 0.7,
+    "trail_decay": 0,
+    "smooth": 5,
+    "mover_density": 0,
+    "trails_on_top": true,
+    "point_scale": 1.4,
+    "background": "white",
+    "show": "both",
+    "static_all": false,
+    "inset": true,
+    "frame_points": true,
+    "trail_color": "position",
+    "mesh": true,
+    "mesh_tol": 0.06,
+    "mesh_all": false,
+    "mesh_fill": false
+  },
+  "view": {
+    "mode": "orbit",
+    "target": [
+      0.17449494563267598,
+      -0.1608379213309145,
+      -0.20622188086318272
+    ],
+    "off": [
+      -0.007110622356900957,
+      -0.15935060141896673,
+      -0.9871964469532452
+    ],
+    "dist": 0.718955606385411,
+    "up": [
+      0.21379375951033494,
+      -0.975594643669765,
+      0.050073707291901214
+    ],
+    "fov": null,
+    "follow": true,
+    "follow_ref": 47
+  },
+  "frame": 47
+}

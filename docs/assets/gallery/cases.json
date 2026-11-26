@@ -1,0 +1,372 @@
+[
+ {
+  "id": "adtmv8__multiuser_meal_seq137_7__f0048_0095",
+  "kind": "Hand and Object Interaction",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "hot3d__002051",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "adtmv8__meal_seq147_3",
+  "kind": "Hand and Object Interaction",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "hot3d__002009",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "agibot__392_672634",
+  "kind": "Robot Manipulation",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "droid__tri_2024-01-11-14h-29m-31s",
+  "kind": "Robot Manipulation",
+  "setup": "2 views, cameras"
+ },
+ {
+  "id": "abc__pull_the_plug_off_the_socket_af1f17eb",
+  "kind": "Robot Manipulation",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "agibot__358_670702",
+  "kind": "Robot Manipulation",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "vitra__000211",
+  "kind": "Robot Manipulation",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "ariagen2__nebula_WDM_Nebula_Eval_V2_32_20261005_095313_t0141",
+  "kind": "In the wild captures",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "ariagen2__nebula_WDM_Nebula_Eval_V2_22_20261004_195102_t0143",
+  "kind": "In the wild captures",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "ariagen2__yam_test5_20260930_172321_t0191",
+  "kind": "In the wild captures",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "ariagen2__nebula_WDM_Nebula_Eval_V2_36_20261005_100008_t0000",
+  "kind": "In the wild captures",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "scale4d_fb3ad005e4",
+  "kind": "DAVIS",
+  "setup": "rollerblade \u00b7 1 view, no camera"
+ },
+ {
+  "id": "scale4d_9404a0eb41",
+  "kind": "DAVIS",
+  "setup": "parkour \u00b7 1 view, no camera"
+ },
+ {
+  "id": "scale4d_1bc98f6a3c",
+  "kind": "DAVIS",
+  "setup": "breakdance flare \u00b7 1 view, no camera"
+ },
+ {
+  "id": "scale4d_d21a22bd96",
+  "kind": "DAVIS",
+  "setup": "dog \u00b7 1 view, no camera"
+ },
+ {
+  "id": "scale4d_b5900d3b82",
+  "kind": "DAVIS",
+  "setup": "bear \u00b7 1 view, no camera"
+ },
+ {
+  "id": "scale4d_1b9fc6fe59",
+  "kind": "DAVIS",
+  "setup": "camel \u00b7 1 view, no camera"
+ },
+ {
+  "id": "scale4d_8bba5a3c57",
+  "kind": "DAVIS",
+  "setup": "horsejump high \u00b7 1 view, no camera"
+ },
+ {
+  "id": "scale4d_206ef69425",
+  "kind": "DAVIS",
+  "setup": "cows \u00b7 1 view, no camera"
+ },
+ {
+  "id": "scale4d_6f57ed7685",
+  "kind": "DAVIS",
+  "setup": "judo \u00b7 1 view, no camera"
+ },
+ {
+  "id": "wild2_rollerblade--ours",
+  "kind": "In the wild captures",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "adtmv8__multiskeleton_party_seq121_2__f0120_0167",
+  "kind": "Hand and Object Interaction",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "droid__iliad_2023-07-19-17h-51m-37s",
+  "kind": "Robot Manipulation",
+  "setup": "2 views, cameras"
+ },
+ {
+  "id": "wild_forge--ours",
+  "kind": "In the wild captures",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "adt__Apartment_release_decoration_seq133_6",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "adt__Apartment_release_meal_seq132_7",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "adt__Apartment_release_multiskeleton_party_seq117_4",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "adt__Apartment_release_multiskeleton_party_seq121_2",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "adt__Apartment_release_multiskeleton_party_seq126_8",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "adt__Apartment_release_multiuser_clean_seq119_4",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "adt__Apartment_release_multiuser_cook_seq144_4",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "adt__Apartment_release_multiuser_meal_seq139_5",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "adt__Apartment_release_work_seq109_7",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "adt__Apartment_release_work_skeleton_seq136_2",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "abc__fold_a_paper_plane_with_a_square_sheet_of_paper_fold_left_side_to_right_side_da1f1a1d",
+  "kind": "Robot Manipulation",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "abc__load_the_bowls_into_the_dish_rack_ed83675c",
+  "kind": "Robot Manipulation",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "abc__organize_the_sunglasses_9fde3dbe",
+  "kind": "Robot Manipulation",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "abc__pack_up_texas_hold_em_set_18bbddef",
+  "kind": "Robot Manipulation",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "abc__place_and_organize_the_chips_bags_onto_the_shelf_80691222",
+  "kind": "Robot Manipulation",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "abc__place_the_bread_469de30f",
+  "kind": "Robot Manipulation",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "agibot__358_662646",
+  "kind": "Robot Manipulation",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "agibot__359_652819",
+  "kind": "Robot Manipulation",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "agibot__362_655731",
+  "kind": "Robot Manipulation",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "agibot__362_673996",
+  "kind": "Robot Manipulation",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "agibot__365_656822",
+  "kind": "Robot Manipulation",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "agibot__375_650352",
+  "kind": "Robot Manipulation",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "agibot__375_654239",
+  "kind": "Robot Manipulation",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "agibot__376_652928",
+  "kind": "Robot Manipulation",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "agibot__390_656248",
+  "kind": "Robot Manipulation",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "agibot__421_681471",
+  "kind": "Robot Manipulation",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "agibot__421_688721",
+  "kind": "Robot Manipulation",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "agibot__424_699659",
+  "kind": "Robot Manipulation",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "agibot__440_691765",
+  "kind": "Robot Manipulation",
+  "setup": "3 views, cameras"
+ },
+ {
+  "id": "ariagen2__yam_test5_20260930_172321_t0064",
+  "kind": "In the wild captures",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "ariagen2__yam_test8_20260930_173136_t0117",
+  "kind": "In the wild captures",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "hot3d__001880",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "hot3d__001891",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "hot3d__001981",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "hot3d__002053",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "hot3d__002069",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "hot3d__002086",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "hot3d__002095",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "hot3d__002112",
+  "kind": "Hand and Object Interaction",
+  "setup": "1 view, cameras"
+ },
+ {
+  "id": "droid__guptalab_2023-04-30-19h-26m-10s",
+  "kind": "Robot Manipulation",
+  "setup": "2 views, cameras"
+ },
+ {
+  "id": "droid__guptalab_2023-07-10-10h-10m-13s",
+  "kind": "Robot Manipulation",
+  "setup": "2 views, cameras"
+ },
+ {
+  "id": "droid__iliad_2023-06-12-19h-49m-04s",
+  "kind": "Robot Manipulation",
+  "setup": "2 views, cameras"
+ },
+ {
+  "id": "droid__iris_29838012_2023-07-10-16h-36m-51s",
+  "kind": "Robot Manipulation",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "droid__pennpal_25455306_2023-07-15-23h-32m-09s",
+  "kind": "Robot Manipulation",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "vitra__000047",
+  "kind": "Robot Manipulation",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "vitra__000438",
+  "kind": "Robot Manipulation",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "vitra__000919",
+  "kind": "Robot Manipulation",
+  "setup": "1 view, RGB only"
+ },
+ {
+  "id": "vitra__001343",
+  "kind": "Robot Manipulation",
+  "setup": "1 view, RGB only"
+ }
+]

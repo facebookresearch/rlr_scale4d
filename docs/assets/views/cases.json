@@ -1,0 +1,62 @@
+{
+ "clips": {
+  "pstudio": {
+   "on": [
+    "scale4d_1082db669e",
+    "scale4d_87388c2848",
+    "scale4d_f1ae0f583b",
+    "scale4d_861fecd259",
+    "scale4d_f1815db2d4",
+    "scale4d_225448bbc6",
+    "scale4d_046194f65d",
+    "scale4d_28410d0fe9",
+    "scale4d_579081af3d",
+    "scale4d_f525ff8b5c"
+   ]
+  },
+  "show3d": {
+   "on": [
+    "scale4d_bbe1f36c31",
+    "scale4d_bfa3276059",
+    "scale4d_2cd290d26a",
+    "scale4d_76f3c79d9c",
+    "scale4d_0410ca44e4",
+    "scale4d_510eb47114",
+    "scale4d_f6e4d17be3",
+    "scale4d_8265008791",
+    "scale4d_7c37a0b745",
+    "scale4d_0781a63a1d"
+   ]
+  }
+ },
+ "names": {
+  "pstudio": "Panoptic Studio \u00b7 softball",
+  "show3d": "Show3D \u00b7 can on a table"
+ },
+ "aj": {
+  "pstudio": [
+   0.0,
+   25.6,
+   29.2,
+   48.9,
+   47.9,
+   57.7,
+   71.9,
+   80.1,
+   78.9,
+   83.0
+  ],
+  "show3d": [
+   46.8,
+   47.2,
+   49.2,
+   55.0,
+   57.9,
+   59.6,
+   60.2,
+   60.5,
+   61.3,
+   62.7
+  ]
+ }
+}

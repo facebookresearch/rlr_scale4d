@@ -1,0 +1,1321 @@
+<!doctype html>
+<!--
+  Copyright (c) Meta Platforms, Inc. and affiliates.
+  All rights reserved.
+  
+  This source code is licensed under the license found in the
+  LICENSE file in the root directory of this source tree.
+-->
+
+<html lang="zh">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4D tracks</title>
+<style>
+  :root { --bg:#f6f7f9; --fg:#1b1f24; --muted:#5b6570; --line:#d8dde3; --panel:#fff; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin:0; font:13px/1.45 system-ui, sans-serif; color:var(--fg); background:var(--bg); display:flex; flex-direction:column; }
+  header { display:flex; gap:12px; align-items:center; padding:8px 14px; border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap; }
+  header h1 { font-size:15px; margin:0 6px 0 0; }
+  select, button { font:inherit; padding:3px 8px; }
+  #t { flex:1; min-width:160px; max-width:520px; }
+  #timing { color:var(--muted); font-variant-numeric:tabular-nums; }
+  main { flex:1; display:grid; grid-template-columns:minmax(0,1fr) 400px; min-height:0; }
+  body.view .tuneonly { display:none; }
+  body.view main { grid-template-columns:minmax(0,1fr) 340px; }
+  body.noside main { grid-template-columns:minmax(0,1fr); }
+  body.noside aside { display:none; }
+  body:not(.view) #vPanel { display:none; }
+  #view { position:relative; min-height:0; background:#fff; }
+  #view.dark { background:#111316; }
+  #gl { position:absolute; inset:0; width:100%; height:100%; display:block; cursor:grab; }
+  #inset { position:absolute; left:12px; bottom:12px; width:min(300px, 32%); border:1px solid rgba(128,128,128,.5); border-radius:6px; }
+  #inset[hidden] { display:none; }
+  #loadbar { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(320px, 60%); text-align:center; color:#5b6570; font-size:12px; pointer-events:none; }
+  #loadbar[hidden] { display:none; }
+  #loadbar div { height:3px; background:#e3e7ec; border-radius:2px; overflow:hidden; margin-bottom:6px; }
+  #loadbar i { display:block; height:100%; width:0; background:#1b1f24; transition:width .15s; }
+  .viewbtns { position:absolute; top:10px; right:10px; display:flex; gap:6px; }
+  .viewbtns button { background:rgba(20,22,26,.85); color:#e8ecf1; border:1px solid rgba(255,255,255,.2); border-radius:6px; }
+  .viewbtns button[aria-pressed=true] { background:#3a4250; }
+  aside { background:var(--panel); border-left:1px solid var(--line); overflow:auto; padding:10px 12px; }
+  fieldset { border:1px solid var(--line); border-radius:6px; margin:0 0 10px; padding:6px 10px 8px; }
+  legend { color:var(--muted); font-weight:600; padding:0 4px; }
+  .row { display:grid; grid-template-columns:104px minmax(0,1fr) 56px; align-items:center; gap:6px; margin-top:6px; }
+  .row select { min-width:0; max-width:100%; }
+  aside { overflow-x:hidden; }
+  .row[hidden], .checks[hidden], .help[hidden] { display:none; }
+  .row label { font-weight:600; font-family:ui-monospace, monospace; font-size:12px; }
+  .row output { text-align:right; font-variant-numeric:tabular-nums; }
+  input[type=range] { width:100%; }
+  .help { color:var(--muted); margin:2px 0 4px; font-size:12px; }
+  .checks label { margin-right:12px; white-space:nowrap; }
+  #counts { font-variant-numeric:tabular-nums; }
+  .btns { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+  .btns button.primary { background:#0b5cad; color:#fff; border:1px solid #0b5cad; border-radius:5px; padding:5px 10px; }
+  .btns button { border-radius:5px; }
+  #status { margin:6px 0 2px; min-height:1.4em; }
+  #status.dirty { color:#a15c00; } #status.ok { color:#1a7f37; } #status.err { color:#b42318; }
+  code { overflow-wrap:anywhere; font-size:11px; }
+  pre { background:#f0f2f5; padding:6px; border-radius:4px; font-size:11px; white-space:pre-wrap; margin:6px 0; }
+
+  body.embed header h1, body.embed header label, body.embed #timing, body.embed #vPanel { display:none !important; }
+  body.embed header { border-bottom:0; padding:6px 10px; background:#fff; }
+  body.embed main { grid-template-columns:minmax(0,1fr) !important; }
+  body.embed aside { display:none !important; }
+</style>
+<!-- viewer-embed.css --><script>(function () { var q = new URLSearchParams(location.search); if (q.has("embed")) document.write('<link rel="stylesheet" href="' + new URL("../viewer-embed.css", location.href).href + '?v=' + (q.get("v") || "0") + '">'); })();</script>
+
+<header>
+  <h1 id="title">SCALE4D</h1>
+  <label>case <select id="clip"></select></label>
+  <button id="play" title="Play (space)">▶</button>
+  <input id="t" type="range" min="0" max="47" step="1" value="0">
+  <output id="tOut">t = 0</output>
+  <span id="timing"></span>
+</header>
+<script>if (new URLSearchParams(location.search).has("embed")) document.body.classList.add("embed");</script>
+<main>
+  <section id="view">
+    <canvas id="gl"></canvas>
+    <div class="viewbtns"><button id="vOrbit" aria-pressed="true" title="Free view (R resets)">Free view</button><button id="vInput" aria-pressed="false" title="Input camera (I)">Input camera</button><button id="vFollow" aria-pressed="false" title="Free view that moves with the input camera" hidden>Follow camera</button><button id="vTrails" aria-pressed="true">Trails</button><button id="vPanel" aria-pressed="false" title="点大小、线宽、轨迹长度、背景">显示设置</button></div>
+    <img id="inset" alt="input frame">
+    <div id="loadbar" hidden><div><i></i></div><span></span></div>
+  </section>
+  <aside>
+    <fieldset class="tuneonly"><legend>1 · 动静态分割</legend>
+      <div class="row"><label>method</label><select id="seg_method" style="grid-column: span 2"><option value="motion">运动阈值 + DBSCAN（viser 那套）</option><option value="sam">SAM 文字提示（做例子用）</option></select></div>
+      <div id="samBox" hidden>
+        <div class="row"><label>sam_prompts</label><input id="seg_sam_prompts" type="text" placeholder="person, dog" style="grid-column: span 2"></div>
+        <div class="btns"><button id="samRun" class="primary">跑 SAM</button></div>
+        <p class="help">用英文写要分出来的东西，多个用逗号隔开。SAM 3.1 在输入视频的每一帧上找它们；一条 track 被 query 的那个像素落在掩码里就是运动点，落在掩码边缘 2 像素内的点直接去掉。跑一次大约 2–3 分钟，结果存下来，下次打开直接用。</p>
+        <div id="samStatus" class="help" style="color:var(--fg)"></div>
+        <img id="samPreview" alt="" hidden style="width:100%;border-radius:4px;margin-top:4px">
+      </div>
+      <div id="segRows"></div>
+      <div id="counts" class="help" style="color:var(--fg)"></div>
+    </fieldset>
+    <fieldset class="tuneonly"><legend>2 · 去飞点（另一套逻辑：去掉的点直接不画）</legend>
+      <div id="dropRows"></div>
+    </fieldset>
+    <fieldset><legend id="displayLegend">3 · 显示</legend>
+      <div id="displayRows"></div>
+    </fieldset>
+    <fieldset class="tuneonly"><legend>4 · 保存 / 导出</legend>
+      <div class="btns">
+        <button id="save" class="primary" title="把分割参数、显示设置、相机视角、当前帧存下来">保存设置</button>
+        <button id="export" class="primary" title="保存，然后生成可以直接放到网站上的页面">保存并导出到网站</button>
+        <button id="png" title="当前画面存成 PNG，2 倍分辨率 (P)">存 PNG</button>
+      </div>
+      <div class="btns"><button id="revert">恢复已保存</button><button id="defaults">恢复默认</button><button id="raw" aria-pressed="false" title="不去飞点和小碎片、不做 DBSCAN、不平滑。再点一次恢复。">去掉全部修饰</button></div>
+      <div id="status"></div>
+      <p class="help">「保存设置」写到 <code id="dest"></code>，下次打开这个 case 就是现在这样（参数 + 视角 + 帧）。「保存并导出到网站」另外生成 <code>publish/</code> 文件夹：纯静态文件，不带调参面板，整个文件夹拷到网站上就能用。</p>
+    </fieldset>
+  </aside>
+</main>
+<pre id="check" hidden></pre>
+<script>
+const DATA = {"mode": "view", "clips": [{"id": "adtmv8__multiuser_meal_seq137_7__f0048_0095", "n": 0, "T": 48}, {"id": "hot3d__002051", "n": 0, "T": 48}, {"id": "adtmv8__meal_seq147_3", "n": 0, "T": 48}, {"id": "hot3d__002009", "n": 0, "T": 48}, {"id": "agibot__392_672634", "n": 0, "T": 48}, {"id": "droid__tri_2024-01-11-14h-29m-31s", "n": 0, "T": 48}, {"id": "abc__pull_the_plug_off_the_socket_af1f17eb", "n": 0, "T": 48}, {"id": "agibot__358_670702", "n": 0, "T": 48}, {"id": "vitra__000211", "n": 0, "T": 48}, {"id": "ariagen2__nebula_WDM_Nebula_Eval_V2_32_20261005_095313_t0141", "n": 0, "T": 48}, {"id": "ariagen2__nebula_WDM_Nebula_Eval_V2_22_20261004_195102_t0143", "n": 0, "T": 48}, {"id": "ariagen2__yam_test5_20260930_172321_t0191", "n": 0, "T": 48}, {"id": "ariagen2__nebula_WDM_Nebula_Eval_V2_36_20261005_100008_t0000", "n": 0, "T": 48}, {"id": "scale4d_fb3ad005e4", "n": 0, "T": 48}, {"id": "scale4d_9404a0eb41", "n": 0, "T": 48}, {"id": "scale4d_1bc98f6a3c", "n": 0, "T": 48}, {"id": "scale4d_d21a22bd96", "n": 0, "T": 48}, {"id": "scale4d_b5900d3b82", "n": 0, "T": 48}, {"id": "scale4d_1b9fc6fe59", "n": 0, "T": 48}, {"id": "scale4d_8bba5a3c57", "n": 0, "T": 48}, {"id": "scale4d_206ef69425", "n": 0, "T": 48}, {"id": "scale4d_6f57ed7685", "n": 0, "T": 48}, {"id": "wild2_rollerblade--ours", "n": 0, "T": 48}, {"id": "adtmv8__multiskeleton_party_seq121_2__f0120_0167", "n": 0, "T": 48}, {"id": "droid__iliad_2023-07-19-17h-51m-37s", "n": 0, "T": 48}, {"id": "wild_forge--ours", "n": 0, "T": 48}, {"id": "adt__Apartment_release_decoration_seq133_6", "n": 0, "T": 48}, {"id": "adt__Apartment_release_meal_seq132_7", "n": 0, "T": 48}, {"id": "adt__Apartment_release_multiskeleton_party_seq117_4", "n": 0, "T": 48}, {"id": "adt__Apartment_release_multiskeleton_party_seq121_2", "n": 0, "T": 48}, {"id": "adt__Apartment_release_multiskeleton_party_seq126_8", "n": 0, "T": 48}, {"id": "adt__Apartment_release_multiuser_clean_seq119_4", "n": 0, "T": 48}, {"id": "adt__Apartment_release_multiuser_cook_seq144_4", "n": 0, "T": 48}, {"id": "adt__Apartment_release_multiuser_meal_seq139_5", "n": 0, "T": 48}, {"id": "adt__Apartment_release_work_seq109_7", "n": 0, "T": 48}, {"id": "adt__Apartment_release_work_skeleton_seq136_2", "n": 0, "T": 48}, {"id": "abc__fold_a_paper_plane_with_a_square_sheet_of_paper_fold_left_side_to_right_side_da1f1a1d", "n": 0, "T": 48}, {"id": "abc__load_the_bowls_into_the_dish_rack_ed83675c", "n": 0, "T": 48}, {"id": "abc__organize_the_sunglasses_9fde3dbe", "n": 0, "T": 48}, {"id": "abc__pack_up_texas_hold_em_set_18bbddef", "n": 0, "T": 48}, {"id": "abc__place_and_organize_the_chips_bags_onto_the_shelf_80691222", "n": 0, "T": 48}, {"id": "abc__place_the_bread_469de30f", "n": 0, "T": 48}, {"id": "agibot__358_662646", "n": 0, "T": 48}, {"id": "agibot__359_652819", "n": 0, "T": 48}, {"id": "agibot__362_655731", "n": 0, "T": 48}, {"id": "agibot__362_673996", "n": 0, "T": 48}, {"id": "agibot__365_656822", "n": 0, "T": 48}, {"id": "agibot__375_650352", "n": 0, "T": 48}, {"id": "agibot__375_654239", "n": 0, "T": 48}, {"id": "agibot__376_652928", "n": 0, "T": 48}, {"id": "agibot__390_656248", "n": 0, "T": 48}, {"id": "agibot__421_681471", "n": 0, "T": 48}, {"id": "agibot__421_688721", "n": 0, "T": 48}, {"id": "agibot__424_699659", "n": 0, "T": 48}, {"id": "agibot__440_691765", "n": 0, "T": 48}, {"id": "ariagen2__yam_test5_20260930_172321_t0064", "n": 0, "T": 48}, {"id": "ariagen2__yam_test8_20260930_173136_t0117", "n": 0, "T": 48}, {"id": "hot3d__001880", "n": 0, "T": 48}, {"id": "hot3d__001891", "n": 0, "T": 48}, {"id": "hot3d__001981", "n": 0, "T": 48}, {"id": "hot3d__002053", "n": 0, "T": 48}, {"id": "hot3d__002069", "n": 0, "T": 48}, {"id": "hot3d__002086", "n": 0, "T": 48}, {"id": "hot3d__002095", "n": 0, "T": 48}, {"id": "hot3d__002112", "n": 0, "T": 48}, {"id": "droid__guptalab_2023-04-30-19h-26m-10s", "n": 0, "T": 48}, {"id": "droid__guptalab_2023-07-10-10h-10m-13s", "n": 0, "T": 48}, {"id": "droid__iliad_2023-06-12-19h-49m-04s", "n": 0, "T": 48}, {"id": "droid__iris_29838012_2023-07-10-16h-36m-51s", "n": 0, "T": 48}, {"id": "droid__pennpal_25455306_2023-07-15-23h-32m-09s", "n": 0, "T": 48}, {"id": "vitra__000047", "n": 0, "T": 48}, {"id": "vitra__000438", "n": 0, "T": 48}, {"id": "vitra__000919", "n": 0, "T": 48}, {"id": "vitra__001343", "n": 0, "T": 48}]};
+const VIEW = DATA.mode === "view";
+const $ = id => document.getElementById(id);
+const RED = [235, 30, 30];
+const TYPED = { int16: Int16Array, uint8: Uint8Array, int8: Int8Array, uint16: Uint16Array, int32: Int32Array, float32: Float32Array };
+const DENSE_LINK = 30;            // tenths of a lattice step: a dense point this close to a moving track rides on it
+const LAP_UNIT = 0.002;           // motion_seg.LAP_UNIT: the unit of the stored edge measure
+let clip = null, scene = null, cfg = null, saved = "", t = 0, playing = false, frames = [], showTrails = true;
+
+// ------------------------------------------------------------------ controls: [key, label help, min, max, step] / select / check
+const SEG_UI = [
+  ["motion_frac", "一条 track 的运动量 = 它可见的那些帧里，离第 0 帧位置的距离的 P90。运动量超过「这个 clip 的 P99 × 这个比例」就是运动种子。调小：更多点算运动。", 0, 1, 0.005],
+  ["motion_m", "大于 0 时改用绝对距离（米）当阈值，上面的比例不再起作用。0 = 用比例。", 0, 2, 0.01],
+  ["cluster_min", "对运动种子（第 0 帧位置）做 DBSCAN：eps 范围内至少这么多个种子才成团。不成团的落单种子回到静态。0 = 不做 DBSCAN。", 0, 300, 1],
+  ["cluster_eps", "DBSCAN 的半径，单位米。场景很远、点很稀时要调大，否则运动物体会被当成落单点。", 0.005, 2, 0.005],
+  ["frame0_only", "只用第 0 帧 query 的 track（不含后面帧补进来的）。", "check"],
+];
+const DROP_UI = [
+  ["min_conf", "模型对每个点的 3D 位置有一个置信度（训练时 3D 误差按它加权：模型觉得自己会错得多的点，置信度低）。远处的背景、天空、深度断层上的点置信度低。置信度看的是绝对误差，所以远景的 clip 整体偏低、近景的基本都是 1；这里按这个 clip 自己的水平来卡：低于「这个 clip 第 0 帧的中位置信度 × 这个数」的点去掉。0 = 不去；调大：只留模型最有把握的点。", 0, 2, 0.05],
+  ["edge_tol", "去飞点，MoGe-3 demo 的规则（depth_map_edge, ltol）搬到 224 网格上：在每个点被 query 的那一帧，用它周围和它差不多远的点拟合一个平面，这个点自己的 1/深度 偏离这个平面超过这个百分比，或者周围根本没有和它差不多远的点，就是悬在两个表面之间的飞点，直接去掉：不画，也不参与上面的分割。斜的表面、断层两侧贴在各自表面上的点都保留。MoGe-3 用 1%。0 = 不去掉任何点；调小：去得更狠。", 0, 10, 0.1],
+  ["min_group", "剩下的点按 224 网格上相邻（深度差不多）连成片；点数少于这个数的碎片整片去掉。0 = 不去。调大：只留大片的表面。", 0, 500, 5],
+];
+const DISPLAY_UI = [
+  ["mesh", "画成贴图的面：这一帧的 224×224 个点和相邻的点连成三角形（深度相差超过 mesh_tol 的不连），贴上原图。有每帧点的 clip 用这一帧自己的点；其它（baseline）用第 0 帧 query 的点在这一帧的位置，颜色取第 0 帧。只画这一帧的面和轨迹。", "check"],
+  ["mesh_all", "画面里也包括这一帧看不见（被挡住或出画）的点，按方法预测的位置画（没有每帧点的 clip，例如 baseline）。", "check"],
+  ["mesh_fill", "画成面时，把之前帧见过的静态点补在这一帧的洞里（被这一帧的面挡住或重合的不画）。", "check"],
+  ["mesh_tol", "连成三角形的相邻点，深度最多相差这个比例（MoGe 的网格也是这么断开深度跳变的）。", 0.005, 0.2, 0.005],
+  ["frame_points", "每一帧画模型在这一帧自己看到的 224×224 个点：每个格子在这一帧 query、在这一帧解码，正好落在自己的像素上（和第 0 帧一样干净，没有跟踪误差）。静态点里只有这一帧看不到的（被挡住的、画面外的）才另外画出来。运动物体 = 运动 track 落到的那些格子，标红；轨迹仍然来自 track。关掉 = 只画 track 自己的点（旧的画法）。", "check"],
+  ["point_scale", "点的大小，单位是「一格」：1 = 这个点被 query 的那一格在它那个深度上的大小，所以远的点大、近的点小，从输入相机看正好铺满画面。默认 1.4（MoGe-3 demo 的取值）。调大：把缝盖住；调小：点更细。", 0.5, 4, 0.05],
+  ["dense", "背景用逐像素点云（最后一帧 + 前面 3 帧的每个像素，只留一层）。运动物体上的像素跟着它最近的 track 一起动。关掉 = 只画 224 网格的 track。", "check"],
+  ["dense_size", "逐像素点的大小：1 = 正好一个像素在那个距离的大小（近大远小），调大可以把缝填上。", 0.5, 4, 0.1],
+  ["static_tracks", "在逐像素背景上再叠加 224 网格的静态 track（能补上逐像素点云没看到的地方，但会有两层）。", "check"],
+  ["mover_color", "", "select", [["red", "运动点标红"], ["rgb", "运动点用原图颜色"]]],
+  ["trail", "轨迹长度（帧）。最大 = 从头画到当前帧。", 1, 47, 1],
+  ["trail_color", "", "select", [["track", "轨迹每条一个颜色"], ["time", "轨迹颜色 = 时间（turbo 色带，早 → 晚）"], ["position", "轨迹颜色 = 在物体上的位置（彩虹，D4RT 那种）"]]],
+  ["max_traces", "最多画多少条轨迹（在运动点里均匀取）。0 = 不画。调小：每条看得更清楚。", 0, 10000, 100],
+  ["smooth", "运动点和轨迹按这么多帧做平滑（1 = 不平滑），去掉逐帧抖动。", 1, 9, 2],
+  ["mover_density", "去掉零星的运动散点：每一帧里，一个运动点周围 5×5 格（含它自己那格）里至少要有这么多格也有运动点才画它；达不到的是跟丢后散落的点，这一帧不画，它的轨迹也在这里断开。默认 13（过半）。0 = 全部都画；调大：只留成片的运动物体（细的东西，比如线缆，会被去掉）。", 0, 25, 1],
+  ["trails_on_top", "轨迹画在所有点的上面，不被点云挡住。", "check"],
+  ["line_width", "轨迹线宽（像素）。", 0.5, 10, 0.25],
+  ["trail_alpha", "轨迹的不透明度（当前帧那一头）。调小：颜色更淡。", 0.05, 1, 0.05],
+  ["trail_decay", "轨迹越旧越淡：0 = 整条一样浓，1 = 尾巴完全淡出。", 0, 1, 0.05],
+  ["background", "", "select", [["white", "白色"], ["dark", "深色"]]],
+  ["show", "", "select", [["both", "全部"], ["moving", "只看运动"], ["background", "只看静态"]]],
+  ["static_all", "静态点从头到尾全部显示。默认：每个静态点从模型第一次看见它的那帧起出现；某一帧模型已经看到它后面去了、而它自己不在那儿了，那一帧就不画（去掉物体走后留下的残影）。", "check"],
+  ["inset", "左下角显示输入视频。", "check"],
+];
+function buildRows(host, group, ui) {
+  for (const [k, help, a, b, step] of ui) {
+    const id = `${group}_${k}`;
+    let html;
+    if (a === "check") html = `<div class="checks" style="margin-top:6px"><label><input type="checkbox" id="${id}"> ${k}</label></div>`;
+    else if (a === "select") html = `<div class="row"><label>${k}</label><select id="${id}">${b.map(([v, s]) => `<option value="${v}">${s}</option>`).join("")}</select><span></span></div>`;
+    else html = `<div class="row"><label>${k}</label><input id="${id}" type="range" min="${a}" max="${b}" step="${step}"><output></output></div>`;
+    host.insertAdjacentHTML("beforeend", html + (help ? `<p class="help">${help}</p>` : ""));
+    $(id).addEventListener("input", () => {
+      const el = $(id);
+      cfg[group][k] = a === "check" ? el.checked : a === "select" ? el.value : +el.value;
+      if (group !== "display") rebuild(); else if (k === "max_traces" || k === "smooth" || k === "mover_density" || k === "trail_color") { prepareMovers(); uploadMovers(); refresh(); } else if (k === "mover_color" || k === "frame_points" || k === "show" || k === "mesh" || k === "mesh_tol" || k === "mesh_all" || k === "mesh_fill") { uploadMovers(); refresh(); } else refresh();
+    });
+  }
+}
+function syncControls() {
+  for (const [group, ui] of VIEW ? [["display", DISPLAY_UI]] : [["seg", SEG_UI], ["drop", DROP_UI], ["display", DISPLAY_UI]]) for (const [k, , a, , step] of ui) {
+    const el = $(`${group}_${k}`), v = cfg[group][k];
+    if (a === "check") el.checked = !!v;
+    else { el.value = v; const out = el.parentElement.querySelector("output"); if (out) out.textContent = step >= 1 ? String(v) : (+v).toFixed(step < 0.01 ? 3 : 2); }
+  }
+  $("view").classList.toggle("dark", cfg.display.background === "dark");
+  $("inset").hidden = !cfg.display.inset;
+  { const row = $("display_frame_points").closest(".row, .checks"), help = row.nextElementSibling, has = !!(clip && clip.f_r);    // clips packed without the frames' own points
+    row.hidden = !has; if (help && help.classList.contains("help")) help.hidden = !has; }
+  if (VIEW) return;
+  { const row = $("drop_min_conf").closest(".row"), help = row.nextElementSibling, has = !!(clip && clip.conf);     // clips packed without the confidence head
+    row.hidden = !has; if (help && help.classList.contains("help")) help.hidden = !has; }
+  const sam = cfg.seg.method === "sam";
+  $("seg_method").value = cfg.seg.method;
+  if (document.activeElement !== $("seg_sam_prompts")) $("seg_sam_prompts").value = cfg.seg.sam_prompts;
+  $("samBox").hidden = !sam;
+  for (const k of ["motion_frac", "motion_m", "cluster_min", "cluster_eps"]) {      // the motion method's own knobs
+    const row = $(`seg_${k}`).closest(".row"), help = row.nextElementSibling;
+    row.hidden = sam;
+    if (help && help.classList.contains("help")) help.hidden = sam;
+  }
+}
+
+// ------------------------------------------------------------------ data
+const VQ = VIEW ? `?v=${encodeURIComponent(new URLSearchParams(location.search).get("v") || "")}` : "";
+function loading(id, got, total) {  // the bar in the view, and the same news for a page that embeds this one
+  const bar = $("loadbar");
+  bar.hidden = total < 0;
+  if (total >= 0) {
+    bar.querySelector("i").style.width = total ? `${Math.min(100, 100 * got / total).toFixed(1)}%` : "30%";
+    bar.querySelector("span").textContent = total ? `Loading ${(got / 1e6).toFixed(1)} / ${(total / 1e6).toFixed(1)} MB` : "Loading";
+  }
+  if (parent !== window) parent.postMessage({ type: "scale4d-progress", id, got, total }, "*");
+}
+async function loadBin(base, name) {
+  const opt = { cache: VIEW ? "default" : "no-store" };   // the published page's files change only with its version
+  const info = await (await fetch(`data/${base}.json${VQ}`, opt)).json();
+  const res = await fetch(`data/${name}.bin${VQ}`, opt);
+  const total = +res.headers.get("Content-Length") || 0;
+  let got = 0, last = 0;
+  loading(base, 0, total);
+  let body = res.body.pipeThrough(new TransformStream({ transform(chunk, ctl) {
+    got += chunk.length;
+    if (got - last > 262144) { last = got; loading(base, got, total); }
+    ctl.enqueue(chunk);
+  } }));
+  if (info.gzip) body = body.pipeThrough(new DecompressionStream("gzip"));   // motion_seg.export
+  const buf = await new Response(body).arrayBuffer();
+  for (const [k, l] of Object.entries(info.layout)) info[k] = new TYPED[l.dtype](buf, l.offset, l.length);
+  if (info.f_r16) {                 // motion_seg.lean_frames: range in steps of f_r_unit, 0 = dropped
+    const a = info.f_r16, r = new Float32Array(a.length), u = info.f_r_unit;
+    for (let i = 0; i < a.length; i++) r[i] = a[i] * u;
+    info.f_r = r;
+    info.f_rgb = new Uint8Array(a.length * 3);     // filled from the input frames (loadTexture)
+    info.f_rgb_pending = true;
+  }
+  loading(base, total, total);
+  return info;
+}
+async function loadConfig(id) {
+  try {
+    const r = await fetch(`data/${id}.config.json`, { cache: "no-store" });
+    return r.ok ? await r.json() : null;
+  } catch (e) { return null; }
+}
+// settings saved before the 2026-11-11 rework (their drop group has no edge_tol): the drop settings were another rule's, and the split
+// thresholds were tuned on the earlier motion values; neither carries over (motion_seg.config)
+const earlier = c => !!(c && c.drop && !("edge_tol" in c.drop));
+const EARLIER_SEG = ["motion_frac", "motion_m", "cluster_eps", "cluster_min"];
+const keptSeg = c => c && c.seg ? Object.fromEntries(Object.entries(c.seg).filter(([k]) => !(earlier(c) && EARLIER_SEG.includes(k)))) : {};
+const RETIRED = ["points", "tile_size", "texture", "point_size"];       // display settings of the earlier tiles and fixed-size dots
+const current = o => Object.fromEntries(Object.entries(o || {}).filter(([k]) => !RETIRED.includes(k)));
+const withDefaults = (c, d) => ({ seg: { method: "motion", sam_prompts: "", ...d.seg, ...keptSeg(c) },
+                                  drop: { min_conf: 0.5, edge_tol: 2, min_group: 30, ...("edge_tol" in d.drop ? d.drop : {}), ...(c && c.drop && !earlier(c) ? c.drop : {}) },
+                                  display: { point_scale: 1.4, mover_density: 13, frame_points: true, trail_color: "track", mesh: false, mesh_tol: 0.04, mesh_all: false, mesh_fill: false, ...current(d.display), ...current(c && c.display), trail: 24 },
+                                  view: (c && c.view) || null, frame: (c && c.frame) || 0 });
+
+// ------------------------------------------------------------------ the split (motion_seg.split / scene)
+// DBSCAN, only what the split needs: a seed is kept if it is a core point (>= minPts seeds within eps, itself
+// included) or within eps of one. X: (m,3) float32.
+function dbscanKeep(X, m, eps, minPts) {
+  const e2 = eps * eps, g = new Int32Array(m * 3), lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < m; i++) for (let d = 0; d < 3; d++) {
+    const v = Math.floor(X[i * 3 + d] / eps); g[i * 3 + d] = v;
+    if (v < lo[d]) lo[d] = v; if (v > hi[d]) hi[d] = v;
+  }
+  const ny = hi[1] - lo[1] + 3, nz = hi[2] - lo[2] + 3;                    // +1 cell of margin on each side
+  const K = (a, b, c) => ((a - lo[0] + 1) * ny + (b - lo[1] + 1)) * nz + (c - lo[2] + 1);
+  const key = new Float64Array(m);
+  for (let i = 0; i < m; i++) key[i] = K(g[i * 3], g[i * 3 + 1], g[i * 3 + 2]);
+  const order = new Int32Array(m);
+  for (let i = 0; i < m; i++) order[i] = i;
+  order.sort((a, b) => key[a] - key[b]);
+  const cellId = new Map(), cs = [];
+  for (let k = 0; k < m; k++) if (k === 0 || key[order[k]] !== key[order[k - 1]]) { cellId.set(key[order[k]], cs.length); cs.push(k); }
+  const nc = cs.length;
+  cs.push(m);
+  const nbr = new Int32Array(nc * 27).fill(-1), cellOf = new Int32Array(m);
+  for (let c = 0; c < nc; c++) {
+    const i = order[cs[c]];
+    let q = 0;
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let e = -1; e <= 1; e++) {
+      const id = cellId.get(K(g[i * 3] + a, g[i * 3 + 1] + b, g[i * 3 + 2] + e));
+      if (id !== undefined) nbr[c * 27 + q++] = id;
+    }
+    for (let k = cs[c]; k < cs[c + 1]; k++) cellOf[order[k]] = c;
+  }
+  const near = (i, j) => { const dx = X[i * 3] - X[j * 3], dy = X[i * 3 + 1] - X[j * 3 + 1], dz = X[i * 3 + 2] - X[j * 3 + 2]; return dx * dx + dy * dy + dz * dz <= e2; };
+  const core = new Uint8Array(m), keep = new Uint8Array(m);
+  for (let i = 0; i < m; i++) {
+    let cnt = 0;
+    scan: for (let u = 0; u < 27; u++) {
+      const c = nbr[cellOf[i] * 27 + u];
+      if (c < 0) break;
+      for (let k = cs[c]; k < cs[c + 1]; k++) if (near(i, order[k]) && ++cnt >= minPts) break scan;
+    }
+    core[i] = keep[i] = cnt >= minPts ? 1 : 0;
+  }
+  for (let i = 0; i < m; i++) {
+    if (core[i]) continue;
+    scan: for (let u = 0; u < 27; u++) {
+      const c = nbr[cellOf[i] * 27 + u];
+      if (c < 0) break;
+      for (let k = cs[c]; k < cs[c + 1]; k++) { const j = order[k]; if (core[j] && near(i, j)) { keep[i] = 1; break scan; } }
+    }
+  }
+  return keep;
+}
+function dropMask(C, bit, tol, minGroup, cut) {    // 1 = not drawn: low confidence, off its own surface (the flying points), or in a piece of fewer than minGroup points
+  const n = C.n, gone = new Uint8Array(n);
+  for (let i = 0; i < n; i++) gone[i] = !(C.flags[i] & bit) || (cut > 0 && C.conf[i] < cut) || (tol > 0 && C.off[i] > tol) ? 1 : 0;
+  if (minGroup > 1 && C.nb) {                 // pieces: kept points joined to their kept lattice neighbours (union-find)
+    const parent = new Int32Array(n), size = new Int32Array(n);
+    for (let i = 0; i < n; i++) parent[i] = i;
+    const find = i => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    for (let i = 0; i < n; i++) {
+      if (gone[i]) continue;
+      for (let k = 0; k < 8; k++) { const j = C.nb[i * 8 + k]; if (j >= 0 && !gone[j]) { const a = find(i), b = find(j); if (a !== b) parent[a] = b; } }
+    }
+    for (let i = 0; i < n; i++) if (!gone[i]) size[find(i)]++;
+    for (let i = 0; i < n; i++) if (!gone[i] && size[find(i)] < minGroup) gone[i] = 1;
+  }
+  for (let i = 0; i < n; i++) if (!(C.flags[i] & bit)) gone[i] = 2;      // not among the shown tracks at all: not counted as dropped
+  return gone;
+}
+function buildScene(C, seg, drop) {
+  const tick = performance.now(), n = C.n, T = C.T, bit = seg.frame0_only ? 2 : 1;
+  const thresh = Math.fround(seg.motion_m > 0 ? seg.motion_m : seg.motion_frac * C.motion_max);
+  const cut = C.conf ? Math.floor(drop.min_conf * C.conf_ref * 255 + 0.5) : 0;      // motion_seg.split: below the clip's own confidence level
+  const idx = [], seedPos = [], tol = C.off ? Math.round(drop.edge_tol / 100 / LAP_UNIT) : 0, gone = C.off ? dropMask(C, bit, tol, drop.min_group | 0, cut) : null;
+  const bySam = seg.method === "sam";
+  let dropped = 0;
+  for (let i = 0; i < n; i++) {
+    if (!(C.flags[i] & bit)) continue;
+    if (gone && gone[i]) { dropped++; continue; }   // a flying point, or in a small piece
+    if (bySam) {                      // SAM: 255 = queried on a mask's edge band (dropped), > 0 = inside a mask
+      const l = C.sam ? C.sam[i] : 0;
+      if (l === 255) { dropped++; continue; }
+      if (l) seedPos.push(idx.length);
+    } else if (C.motion[i] > thresh) seedPos.push(idx.length);
+    idx.push(i);
+  }
+  const mover = new Uint8Array(idx.length), seeds = seedPos.length;
+  if (!bySam && (seg.cluster_min | 0) >= 2 && seeds) {
+    const X = new Float32Array(seeds * 3);
+    seedPos.forEach((p, k) => { const i = idx[p]; X[k * 3] = C.xyz0[i * 3]; X[k * 3 + 1] = C.xyz0[i * 3 + 1]; X[k * 3 + 2] = C.xyz0[i * 3 + 2]; });
+    const keep = dbscanKeep(X, seeds, +seg.cluster_eps, seg.cluster_min | 0);
+    seedPos.forEach((p, k) => { mover[p] = keep[k]; });
+  } else for (const p of seedPos) mover[p] = 1;
+  // static points: where they were queried, ordered by the first frame they are visible
+  let st = [];
+  const mv = [];
+  idx.forEach((i, p) => (mover[p] ? mv : st).push(i));
+  // copies of an earlier track (motion_seg.copies / scene): a static copy is not drawn; a moving copy of a moving track
+  // only at the frames where the earlier one is not seen
+  let hidden = 0;
+  const earlier = new Int32Array(mv.length).fill(-1), lifeOf = new Map();       // static copies: their own life minus the earlier track's
+  if (C.copy) {
+    const label = new Uint8Array(n);
+    for (const i of st) label[i] = 1;
+    for (const i of mv) label[i] = 2;
+    st = st.filter(i => {
+      const r = C.copy[i];
+      if (r < 0 || label[r] !== 1) return true;
+      const l = new Uint8Array(8);
+      let any = 0;
+      for (let d = 0; d < 8; d++) { l[d] = C.life[i * 8 + d] & ~C.life[r * 8 + d]; any |= l[d]; }
+      if (!any) { hidden++; return false; }
+      lifeOf.set(i, l);
+      return true;
+    });
+    mv.forEach((i, j) => { const r = C.copy[i]; if (r >= 0 && label[r] === 2) earlier[j] = r; });
+  }
+  const first = new Int32Array(st.length), bucket = new Int32Array(T + 2);
+  let firstSum = 0;
+  st.forEach((i, k) => { let f = 0; while (f < T && !C.vis[f * n + i]) f++; first[k] = f; bucket[f + 1]++; firstSum += f; });
+  for (let f = 0; f <= T; f++) bucket[f + 1] += bucket[f];
+  const S = st.length, sCount = new Int32Array(T), sQ = new Int16Array(S * 3), sRgb = new Uint8Array(S * 3), fill = bucket.slice(0, T + 1);
+  const M = mv.length, sTs = new Uint8Array(S), sLife = new Uint8Array(C.life ? S * 8 : 0);     // query frame; the frames at which it is drawn
+  let lifeSum = 0;
+  for (let f = 0; f < T; f++) sCount[f] = bucket[f + 1];
+  st.forEach((i, k) => {
+    const o = fill[first[k]]++, src = 3 * (C.tsrc[i] * n + i);
+    for (let d = 0; d < 3; d++) { sQ[o * 3 + d] = C.q[src + d]; sRgb[o * 3 + d] = C.rgb[i * 3 + d]; }
+    sTs[o] = C.tsrc[i];
+    if (C.life) {
+      const own = lifeOf.get(i);
+      for (let d = 0; d < 8; d++) { sLife[o * 8 + d] = own ? own[d] : C.life[i * 8 + d]; for (let b = sLife[o * 8 + d]; b; b &= b - 1) lifeSum++; }
+    }
+  });
+  const mQ = new Int16Array(T * M * 3), mVis = new Uint8Array(T * M), mTsrc = new Uint8Array(M), mRgb = new Uint8Array(M * 3);
+  let moverSum = 0, seenSum = 0;
+  mv.forEach((i, j) => {
+    moverSum += i; mTsrc[j] = C.tsrc[i];
+    const r = earlier[j];
+    for (let d = 0; d < 3; d++) mRgb[j * 3 + d] = C.rgb[i * 3 + d];
+    for (let f = 0; f < T; f++) {
+      const on = C.vis[f * n + i] && !(r >= 0 && C.vis[f * n + r]) ? 1 : 0;
+      mVis[f * M + j] = on; seenSum += on;
+      const a = 3 * (f * M + j), b = 3 * (f * n + i);
+      mQ[a] = C.q[b]; mQ[a + 1] = C.q[b + 1]; mQ[a + 2] = C.q[b + 2];
+    }
+  });
+  const out = { gone, S, M, T, scale: C.scale, s_q: sQ, s_rgb: sRgb, s_count: sCount, s_tsrc: sTs, m_q: mQ, m_vis: mVis, m_tsrc: mTsrc, m_rgb: mRgb, thresh,
+                counts: { shown: idx.length, dropped, seeds, movers: M, static: S, copies: hidden, mover_sum: moverSum, first_sum: firstSum, seen_sum: seenSum, life_sum: lifeSum } };
+  if (C.life) out.s_life = sLife;
+  if (C.b_gap) {                      // dense points: background, and those riding on a mover (motion_seg.scene)
+    const B = C.b_gap.length, slot = new Int32Array(n).fill(-1), on = new Int32Array(B);
+    mv.forEach((i, j) => { slot[i] = j; });
+    let D = 0, riderSum = 0;
+    for (let k = 0; k < B; k++) { const j = C.b_near[k] >= 0 && C.b_gap[k] <= DENSE_LINK ? slot[C.b_near[k]] : -1; on[k] = j; if (j >= 0) { D++; riderSum += j; } }
+    const bq = new Int16Array((B - D) * 3), brgb = new Uint8Array((B - D) * 3), br = new Uint16Array(B - D);
+    const dq = new Int16Array(D * 3), drgb = new Uint8Array(D * 3), dr = new Uint16Array(D), dm = new Int32Array(D);
+    let a = 0, b = 0;
+    for (let k = 0; k < B; k++) {
+      const [Q, RGB, R, o] = on[k] < 0 ? [bq, brgb, br, a++] : [dq, drgb, dr, b++];
+      for (let d = 0; d < 3; d++) { Q[o * 3 + d] = C.b_q[k * 3 + d]; RGB[o * 3 + d] = C.b_rgb[k * 3 + d]; }
+      R[o] = C.b_r[k];
+      if (on[k] >= 0) dm[o] = on[k];
+    }
+    Object.assign(out, { b_q: bq, b_rgb: brgb, b_r: br, d_q: dq, d_rgb: drgb, d_r: dr, d_m: dm });
+    Object.assign(out.counts, { dense: B - D, riders: D, rider_sum: riderSum });
+  }
+  out.ms = performance.now() - tick;
+  return out;
+}
+
+// ------------------------------------------------------------------ colours: every trajectory its own bright hue, or time (turbo)
+function turbo(x) {               // Google's polynomial fit of the Turbo colormap, x in [0, 1] -> 0-255 RGB
+  x = Math.min(1, Math.max(0, x));
+  const r = 34.61 + x * (1172.33 - x * (10793.56 - x * (33300.12 - x * (38394.49 - x * 14825.05))));
+  const g = 23.31 + x * (557.33 + x * (1225.33 - x * (3574.96 - x * (1073.77 + x * 707.56))));
+  const b = 27.2 + x * (3211.1 - x * (15327.97 - x * (27814 - x * (22569.18 - x * 6838.66))));
+  return [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))));
+}
+function distinct(j) {            // viser_dense_track._distinct_colors: golden-ratio hue steps, HSL s 0.85 l 0.62
+  const h = (j * 0.618033988749895) % 1, s = 0.85, l = 0.62, a = s * Math.min(l, 1 - l);
+  const f = m => { const k = (m + h * 12) % 12; return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+}
+
+// ------------------------------------------------------------------ WebGL
+const G = 224;                    // the query lattice
+const SAME = 0.12;                // two points of a lattice cell within this fraction of depth are one surface (motion_seg.SURF_RANGE)
+const AGREE = 0.10;               // a mover marks a cell of the frame when the frame's own point there is within this fraction of its depth
+let fVao, fBuf, fCol, fRad, fCount = 0, zTex, zBuf = new Float32Array(G * G);
+let meshProg, meshVao, meshPos, meshTc, meshIdx, meshCount = 0, tex = null, texId = "";   // the textured surface of a frame; the frames as a texture array     // the frame's own points; their z-depth per cell (0: none)
+const glc = $("gl"), gl = glc.getContext("webgl2", { antialias: true, preserveDrawingBuffer: true });
+let dProg, bVao, bBuf, bCol, bRad, rVao, rBuf, rCol, rRad, rCount = 0;
+let pProg, lProg, sVao, mVao, lVao, sBuf, sCol, sRad, sLifeBuf, mBuf, mCol, mRad, lBuf, lCol, mP = new Float32Array(0), mShow = new Uint8Array(0), mCell = new Int32Array(0), mZ = new Float32Array(0), mCount = 0, segOff = new Int32Array(1), cam = null, mode = "orbit";
+function program(vs, fs) {
+  const p = gl.createProgram();
+  for (const [type, src] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) {
+    const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    gl.attachShader(p, s);
+  }
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
+function pointVao() {             // position, colour, size in the world (the point's lattice cell at its depth); static points also get `life`
+  const vao = gl.createVertexArray(), pos = gl.createBuffer(), col = gl.createBuffer(), rad = gl.createBuffer();
+  gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, pos); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, col); gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.UNSIGNED_BYTE, true, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, rad); gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 1, gl.FLOAT, false, 0, 0);
+  return [vao, pos, col, rad];
+}
+function denseVao() {
+  const vao = gl.createVertexArray(), pos = gl.createBuffer(), col = gl.createBuffer(), rad = gl.createBuffer();
+  gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, pos); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, col); gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.UNSIGNED_BYTE, true, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, rad); gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 1, gl.FLOAT, false, 0, 0);
+  return [vao, pos, col, rad];
+}
+function loadTexture(id, imgs) {  // the input frames as one texture array (a layer per frame), for the surface
+  texId = "";
+  Promise.all(imgs.map(im => im.decode().catch(() => null))).then(() => {
+    if (!clip || clip.id !== id) return;
+    const w = imgs[0].naturalWidth, h = imgs[0].naturalHeight;
+    if (clip.f_rgb_pending && w) {
+      const cv = document.createElement("canvas"), W = clip.W, H = clip.H, n = G * G;
+      cv.width = W; cv.height = H;
+      const cx = cv.getContext("2d", { willReadFrequently: true }), at = new Int32Array(n);
+      for (let r = 0; r < G; r++) for (let c = 0; c < G; c++)
+        at[r * G + c] = (Math.min(H - 1, Math.round(r * H / G)) * W + Math.min(W - 1, Math.round(c * W / G))) * 4;
+      imgs.forEach((im, f) => {
+        cx.drawImage(im, 0, 0, W, H);
+        const d = cx.getImageData(0, 0, W, H).data, o = f * n * 3;
+        for (let i = 0; i < n; i++) { clip.f_rgb[o + i * 3] = d[at[i]]; clip.f_rgb[o + i * 3 + 1] = d[at[i] + 1]; clip.f_rgb[o + i * 3 + 2] = d[at[i] + 2]; }
+      });
+      clip.f_rgb_pending = false;
+      if (cam && scene) uploadFresh();
+    }
+    if (!w || imgs.some(im => im.naturalWidth !== w || im.naturalHeight !== h)) return;
+    if (tex) gl.deleteTexture(tex);
+    tex = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D_ARRAY, tex);
+    gl.texStorage3D(gl.TEXTURE_2D_ARRAY, Math.floor(Math.log2(Math.max(w, h))) + 1, gl.RGB8, w, h, imgs.length);
+    imgs.forEach((im, i) => gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, w, h, 1, gl.RGB, gl.UNSIGNED_BYTE, im));
+    gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.activeTexture(gl.TEXTURE0);
+    texId = id;
+    if (cam && scene) { uploadMesh(); draw(); }
+    loading(id, 0, -1);
+    if (parent !== window) parent.postMessage({ type: "scale4d-ready", id }, "*");
+  });
+}
+function initGL() {
+  meshProg = program(`#version 300 es
+    layout(location=0) in vec3 p; layout(location=1) in vec3 tc; uniform mat4 M; out vec3 v;
+    void main() { gl_Position = M * vec4(p, 1.0); v = tc; }`, `#version 300 es
+    precision highp float; precision highp sampler2DArray; uniform sampler2DArray tex; in vec3 v; out vec4 o;
+    void main() { o = vec4(texture(tex, v).rgb, 1.0); }`);
+  meshVao = gl.createVertexArray(); gl.bindVertexArray(meshVao);
+  meshPos = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, meshPos); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  meshTc = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, meshTc); gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+  meshIdx = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, meshIdx);
+  gl.bindVertexArray(null);
+  // dense points: squares the size of the pixel they came from (radius r metres), so near and far both close up
+  dProg = program(`#version 300 es
+    layout(location=0) in vec3 p; layout(location=1) in vec3 c; layout(location=2) in float r;
+    uniform mat4 M; uniform float F; uniform float Smin; out vec3 col;
+    void main() { gl_Position = M * vec4(p, 1.0); gl_PointSize = clamp(2.0 * r * F / max(gl_Position.w, 1e-4), Smin, 96.0); col = c; }`, `#version 300 es
+    precision mediump float; in vec3 col; out vec4 o; void main() { o = vec4(col, 1.0); }`);
+  [bVao, bBuf, bCol, bRad] = denseVao();
+  [rVao, rBuf, rCol, rRad] = denseVao();
+  // the tracks, as MoGe-3's demo draws its points: a square as large as the point's own lattice cell at its depth (r, metres)
+  // times point_scale, so far points are bigger and the input camera's view closes up. life: the frames at which a static
+  // point is drawn (64 bits); T0: the frame, or -1 for "at every frame"
+  pProg = program(`#version 300 es
+    precision highp float; precision highp sampler2D;
+    layout(location=0) in vec3 p; layout(location=1) in vec3 c; layout(location=2) in float r; layout(location=3) in uvec2 life;
+    uniform mat4 M; uniform float F; uniform float Smin; uniform int T0; out vec3 col;
+    // Seen = 1 (the frozen static points, with the frame's own points on): Dz is the z-depth of the frame's own point in each
+    // lattice cell (0: none). A frozen point that lands in a cell at that point's depth or in front of it is not drawn: the
+    // frame's own point stands for that surface, or the model now sees past the frozen one. Behind it: occluded, drawn.
+    uniform int Seen; uniform vec3 Ce; uniform mat3 Cr; uniform vec4 Kc; uniform vec2 WH; uniform sampler2D Dz;
+    void main() {
+      bool on = T0 < 0 || (((T0 < 32 ? life.x >> uint(T0) : life.y >> uint(T0 - 32)) & 1u) == 1u);
+      if (on && Seen == 1) {
+        vec3 x = Cr * (p - Ce);
+        if (x.z > 1e-6) {
+          ivec2 cell = ivec2(floor(vec2(Kc.x * x.x / x.z + Kc.z, Kc.y * x.y / x.z + Kc.w) * ${G}.0 / WH + 0.5));
+          if (cell.x >= 0 && cell.x < ${G} && cell.y >= 0 && cell.y < ${G}) {
+            float zf = texelFetch(Dz, cell, 0).r;
+            if (zf > 0.0 && x.z <= zf * ${(1 + SAME).toFixed(2)}) on = false;
+          }
+        }
+      }
+      gl_Position = on ? M * vec4(p, 1.0) : vec4(2.0, 2.0, 2.0, 1.0);
+      gl_PointSize = clamp(r * F / max(gl_Position.w, 1e-4), Smin, 96.0 * Smin);
+      col = c;
+    }`, `#version 300 es
+    precision mediump float; in vec3 col; out vec4 o; uniform int Round;
+    void main() { if (Round == 1) { vec2 q = gl_PointCoord * 2.0 - 1.0; if (dot(q, q) > 1.0) discard; } o = vec4(col, 1.0); }`);
+  // a trail segment a -> b as a screen-space quad of width W pixels (4 vertices per instance)
+  lProg = program(`#version 300 es
+    layout(location=0) in vec3 a; layout(location=1) in vec3 b; layout(location=2) in vec3 c; layout(location=3) in float wf;
+    uniform mat4 M; uniform vec2 V; uniform float W; uniform float T0; uniform float L; uniform float Dk; out vec3 col; out float fade;
+    void main() {
+      vec4 pa = M * vec4(a, 1.0), pb = M * vec4(b, 1.0);
+      col = c;
+      // the segment runs from frame wf to wf + 1: age 0 at the current frame T0, 1 at the trail's far end
+      fade = 1.0 - Dk * clamp((T0 - (wf + (gl_VertexID >= 2 ? 1.0 : 0.0))) / max(L, 1.0), 0.0, 1.0);
+      if (pa.w <= 1e-4 || pb.w <= 1e-4) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+      vec2 d = (pb.xy / pb.w - pa.xy / pa.w) * V;
+      float L = length(d);
+      vec2 nrm = L > 1e-6 ? vec2(-d.y, d.x) / L : vec2(0.0, 1.0);
+      vec4 p = gl_VertexID >= 2 ? pb : pa;
+      float side = (gl_VertexID & 1) == 0 ? -1.0 : 1.0;
+      gl_Position = vec4(p.xy + nrm * side * W / V * p.w, p.z, p.w);
+    }`, `#version 300 es
+    precision mediump float; in vec3 col; in float fade; uniform float A; out vec4 o; void main() { o = vec4(col, A * fade); }`);
+  [sVao, sBuf, sCol, sRad] = pointVao();
+  sLifeBuf = gl.createBuffer();
+  [mVao, mBuf, mCol, mRad] = pointVao();
+  [fVao, fBuf, fCol, fRad] = pointVao();
+  zTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, zTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, G, G, 0, gl.RED, gl.FLOAT, zBuf);
+  for (const k of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, k, gl.NEAREST);
+  for (const k of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE);
+  gl.vertexAttribI4ui(3, 0xffffffff, 0xffffffff, 0, 0);   // points without a `life` array: an integer constant, as the shader's input is one
+  lVao = gl.createVertexArray(); lBuf = gl.createBuffer(); lCol = gl.createBuffer();
+  gl.bindVertexArray(lVao);
+  for (const loc of [0, 1, 2, 3]) { gl.enableVertexAttribArray(loc); gl.vertexAttribDivisor(loc, 1); }
+}
+const sPos = () => { const s = scene, out = new Float32Array(s.S * 3); for (let i = 0; i < out.length; i++) out[i] = s.s_q[i] * s.scale; return out; };
+// the size of a point in the world: its lattice cell (clip.dtheta radians) at its depth in the camera of frame f
+const cellAngle = f => { const K = clip.K ? clip.K[f] : [clip.fy, clip.fy]; return clip.dtheta || Math.sqrt(clip.W / G / K[0] * clip.H / G / K[1]); };
+const cellSize = (x, y, z, f) => { const C = clip.c2w[f]; return cellAngle(f) * Math.max((x - C[0][3]) * C[0][2] + (y - C[1][3]) * C[1][2] + (z - C[2][3]) * C[2][2], 1e-4); };
+function uploadStatic() {
+  const pos = sPos(), S = scene.S, rad = new Float32Array(S);
+  for (let i = 0; i < S; i++) rad[i] = cellSize(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2], scene.s_tsrc ? scene.s_tsrc[i] : 0);
+  gl.bindVertexArray(sVao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, sBuf); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, sCol); gl.bufferData(gl.ARRAY_BUFFER, scene.s_rgb, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, sRad); gl.bufferData(gl.ARRAY_BUFFER, rad, gl.STATIC_DRAW);
+  if (scene.s_life) {              // (S,8) bytes -> two 32-bit words per point
+    gl.bindBuffer(gl.ARRAY_BUFFER, sLifeBuf); gl.bufferData(gl.ARRAY_BUFFER, new Uint32Array(scene.s_life.slice().buffer), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(3); gl.vertexAttribIPointer(3, 2, gl.UNSIGNED_INT, 0, 0);
+  } else gl.disableVertexAttribArray(3);
+  const s = scene, B = s.b_r ? s.b_r.length : 0, P = new Float32Array(B * 3), R = new Float32Array(B);
+  for (let i = 0; i < B * 3; i++) P[i] = s.b_q[i] * s.scale;
+  for (let i = 0; i < B; i++) R[i] = s.b_r[i] * s.scale / 4;
+  gl.bindBuffer(gl.ARRAY_BUFFER, bBuf); gl.bufferData(gl.ARRAY_BUFFER, P, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, bCol); gl.bufferData(gl.ARRAY_BUFFER, B ? s.b_rgb : new Uint8Array(0), gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, bRad); gl.bufferData(gl.ARRAY_BUFFER, R, gl.STATIC_DRAW);
+}
+const tint = (v, d, red) => red ? Math.round(v * 0.25 + RED[d] * 0.75) : v;
+function uploadRiders() {         // the dense points on movers: their last-frame position + their track's displacement
+  const s = scene, M = s.M, D = s.d_m ? s.d_m.length : 0, f = clip.dense_frame, red = cfg.display.mover_color === "red";
+  const P = new Float32Array(D * 3), C = new Uint8Array(D * 3), R = new Float32Array(D);
+  let k = 0;
+  for (let i = 0; i < D; i++) {
+    const j = s.d_m[i];
+    if (!s.m_vis[t * M + j]) continue;
+    const a = 3 * (t * M + j), b = 3 * (f * M + j);
+    for (let d = 0; d < 3; d++) { P[k * 3 + d] = s.d_q[i * 3 + d] * s.scale + mP[a + d] - mP[b + d]; C[k * 3 + d] = tint(s.d_rgb[i * 3 + d], d, red); }
+    R[k++] = s.d_r[i] * s.scale / 4;
+  }
+  rCount = k;
+  gl.bindBuffer(gl.ARRAY_BUFFER, rBuf); gl.bufferData(gl.ARRAY_BUFFER, P.subarray(0, k * 3), gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, rCol); gl.bufferData(gl.ARRAY_BUFFER, C.subarray(0, k * 3), gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, rRad); gl.bufferData(gl.ARRAY_BUFFER, R.subarray(0, k), gl.DYNAMIC_DRAW);
+}
+function prepareMovers() {        // the movers' positions, smoothed over `smooth` frames (scene_data.smooth), then their trails
+  const s = scene, T = s.T, M = s.M, h = Math.max(0, (cfg.display.smooth | 0) >> 1), k = 2 * h + 1;
+  mP = new Float32Array(T * M * 3);
+  for (let j = 0; j < M; j++) for (let f = 0; f < T; f++) {       // over the frames of the window where the point is seen
+    let cnt = 0, x = 0, y = 0, z = 0;
+    for (let g = Math.max(0, f - h); g <= Math.min(T - 1, f + h); g++) {
+      if (!s.m_vis[g * M + j]) continue;
+      const a = 3 * (g * M + j);
+      x += s.m_q[a]; y += s.m_q[a + 1]; z += s.m_q[a + 2]; cnt++;
+    }
+    const o = 3 * (f * M + j);
+    if (!cnt || !s.m_vis[f * M + j]) { x = s.m_q[o]; y = s.m_q[o + 1]; z = s.m_q[o + 2]; cnt = 1; }
+    mP[o] = x / cnt * s.scale; mP[o + 1] = y / cnt * s.scale; mP[o + 2] = z / cnt * s.scale;
+  }
+  // every seen mover's lattice cell and z-depth in its frame, and which movers are drawn there: the seen ones, without the
+  // stray ones (mover_density): a mover needs that share of the 5 x 5 cells around its own to hold movers too
+  const need = cfg.display.mover_density | 0;
+  mShow = new Uint8Array(T * M); mCell = new Int32Array(T * M).fill(-1); mZ = new Float32Array(T * M);
+  const occ = new Uint8Array(G * G), sum = new Int32Array((G + 1) * (G + 1));
+  for (let f = 0; f < T; f++) {
+    const C = clip.c2w[f], K = clip.K ? clip.K[f] : [clip.fy, clip.fy, (clip.W - 1) / 2, (clip.H - 1) / 2], o = f * M;
+    occ.fill(0);
+    for (let j = 0; j < M; j++) {
+      if (!s.m_vis[o + j]) continue;
+      const a = 3 * (o + j), dx = mP[a] - C[0][3], dy = mP[a + 1] - C[1][3], dz = mP[a + 2] - C[2][3];
+      const zc = dx * C[0][2] + dy * C[1][2] + dz * C[2][2];
+      if (zc <= 1e-6) continue;
+      const c = Math.floor((K[0] * (dx * C[0][0] + dy * C[1][0] + dz * C[2][0]) / zc + K[2]) * G / clip.W + 0.5);
+      const r = Math.floor((K[1] * (dx * C[0][1] + dy * C[1][1] + dz * C[2][1]) / zc + K[3]) * G / clip.H + 0.5);
+      if (c < 0 || c >= G || r < 0 || r >= G) continue;
+      mCell[o + j] = r * G + c; mZ[o + j] = zc; occ[r * G + c] = 1;
+    }
+    if (need <= 0) { for (let j = 0; j < M; j++) mShow[o + j] = s.m_vis[o + j]; continue; }
+    for (let r = 0; r < G; r++) {                // summed-area table of the occupied cells
+      let row = 0;
+      for (let c = 0; c < G; c++) { row += occ[r * G + c]; sum[(r + 1) * (G + 1) + c + 1] = sum[r * (G + 1) + c + 1] + row; }
+    }
+    for (let j = 0; j < M; j++) {
+      const ci = mCell[o + j];
+      if (ci < 0) continue;
+      const r = (ci / G) | 0, c = ci % G, r0 = Math.max(r - 2, 0), r1 = Math.min(r + 2, G - 1), c0 = Math.max(c - 2, 0), c1 = Math.min(c + 2, G - 1);
+      const n = sum[(r1 + 1) * (G + 1) + c1 + 1] - sum[r0 * (G + 1) + c1 + 1] - sum[(r1 + 1) * (G + 1) + c0] + sum[r0 * (G + 1) + c0];
+      if (n * 25 >= need * (r1 - r0 + 1) * (c1 - c0 + 1)) mShow[o + j] = 1;     // at the frame's border: the same share of the cells there are
+    }
+  }
+  buildTrails();
+}
+function hsv(h, s, v) {
+  const f = n => { const k = (n + h * 6) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); };
+  return [Math.round(f(5) * 255), Math.round(f(3) * 255), Math.round(f(1) * 255)];
+}
+function positionHue(s) {         // each mover's place on the moving thing: its pixel at its query frame, as a 0-1 rainbow coordinate
+  const M = s.M, u = new Float64Array(M);
+  for (let j = 0; j < M; j++) {
+    const f = s.m_tsrc[j], C = clip.c2w[f], K = clip.K ? clip.K[f] : [clip.fy, clip.fy, (clip.W - 1) / 2, (clip.H - 1) / 2], a = 3 * (f * M + j);
+    const dx = mP[a] - C[0][3], dy = mP[a + 1] - C[1][3], dz = mP[a + 2] - C[2][3];
+    const zc = Math.max(dx * C[0][2] + dy * C[1][2] + dz * C[2][2], 1e-6);
+    u[j] = (K[0] * (dx * C[0][0] + dy * C[1][0] + dz * C[2][0]) / zc + K[2]) + 0.5 * (K[1] * (dx * C[0][1] + dy * C[1][1] + dz * C[2][1]) / zc + K[3]);
+  }
+  // the range over the first-frame movers: those are the same pixels in every method, so a pixel gets the same colour everywhere
+  const first = Array.from(u).filter((_, j) => s.m_tsrc[j] === 0), base = first.length > 20 ? first : Array.from(u);
+  const o = base.sort((a, b) => a - b), lo = o[Math.floor(0.02 * (o.length - 1))], hi = o[Math.floor(0.98 * (o.length - 1))];
+  return j => Math.min(1, Math.max(0, (u[j] - lo) / Math.max(hi - lo, 1e-6)));
+}
+function buildTrails() {          // every segment (w -> w+1) of the traced movers, sorted by w
+  const s = scene, T = s.T, M = s.M, K = Math.min(M, cfg.display.max_traces | 0);
+  const pos = cfg.display.trail_color === "position" && M ? positionHue(s) : null;
+  const who = [];
+  for (let i = 0; i < K; i++) who.push(K === 1 ? 0 : Math.floor(i * (M - 1) / (K - 1)));
+  const ok = (j, w) => w >= s.m_tsrc[j] && mShow[w * M + j] && mShow[(w + 1) * M + j];
+  segOff = new Int32Array(T);
+  for (let w = 0; w + 1 < T; w++) { let c = 0; for (const j of who) if (ok(j, w)) c++; segOff[w + 1] = segOff[w] + c; }
+  const n = segOff[T - 1], P = new Float32Array(n * 6), C = new Uint8Array(n * 4);
+  let k = 0;
+  for (let w = 0; w + 1 < T; w++) for (const j of who) {
+    if (!ok(j, w)) continue;
+    const a = 3 * (w * M + j), b = 3 * ((w + 1) * M + j), col = pos ? hsv(0.82 * pos(j), 0.85, 0.98) : cfg.display.trail_color === "time" ? turbo((w + 0.5) / Math.max(T - 1, 1)) : distinct(j);
+    for (let d = 0; d < 3; d++) { P[k * 6 + d] = mP[a + d]; P[k * 6 + 3 + d] = mP[b + d]; C[k * 4 + d] = col[d]; }
+    C[k * 4 + 3] = w;
+    k++;
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, lBuf); gl.bufferData(gl.ARRAY_BUFFER, P, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, lCol); gl.bufferData(gl.ARRAY_BUFFER, C, gl.STATIC_DRAW);
+}
+function uploadMovers() {         // the movers visible at frame t
+  const s = scene, M = s.M, P = new Float32Array(M * 3), C = new Uint8Array(M * 3), R = new Float32Array(M), red = cfg.display.mover_color === "red";
+  let k = 0;
+  for (let j = 0; j < M; j++) {
+    if (!mShow[t * M + j]) continue;
+    const a = 3 * (t * M + j);
+    for (let d = 0; d < 3; d++) { P[k * 3 + d] = mP[a + d]; C[k * 3 + d] = tint(s.m_rgb[j * 3 + d], d, red); }
+    R[k] = cellSize(mP[a], mP[a + 1], mP[a + 2], t);
+    k++;
+  }
+  uploadRiders();
+  mCount = k;
+  gl.bindBuffer(gl.ARRAY_BUFFER, mBuf); gl.bufferData(gl.ARRAY_BUFFER, P.subarray(0, k * 3), gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, mCol); gl.bufferData(gl.ARRAY_BUFFER, C.subarray(0, k * 3), gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, mRad); gl.bufferData(gl.ARRAY_BUFFER, R.subarray(0, k), gl.DYNAMIC_DRAW);
+  uploadFresh();
+  uploadMesh();
+}
+const freshOn = () => !!(clip && clip.f_r && cfg.display.frame_points);
+function uploadMesh() {           // frame t as a textured surface: the lattice cells joined to their neighbours on the same surface
+  meshCount = 0;
+  if (!clip || !scene || !cfg.display.mesh || texId !== clip.id) return;
+  const n = G * G, C = clip.c2w[t], K = intrinsics(), du = clip.W / G, dv = clip.H / G;
+  const P = new Float32Array(n * 3), TC = new Float32Array(n * 3), ok = new Uint8Array(n), dep = new Float32Array(n);
+  if (freshOn()) {                // the frame's own lattice (uploadFresh: zBuf, 0 = dropped), coloured by this frame
+    for (let r = 0, i = 0; r < G; r++) for (let c = 0; c < G; c++, i++) {
+      const zz = zBuf[i];
+      if (!(zz > 0)) continue;
+      const X = (c * du - K[2]) / K[0] * zz, Y = (r * dv - K[3]) / K[1] * zz;
+      for (let d = 0; d < 3; d++) P[i * 3 + d] = C[d][0] * X + C[d][1] * Y + C[d][2] * zz + C[d][3];
+      TC[i * 3] = (c * du + 0.5) / clip.W; TC[i * 3 + 1] = (r * dv + 0.5) / clip.H; TC[i * 3 + 2] = t;
+      ok[i] = 1; dep[i] = zz;
+    }
+  } else {                        // the first-frame lattice tracks (the first G*G), where the method puts them at frame t, coloured by frame 0
+    const nn = clip.n, g = scene.gone;
+    if (nn < n) return;
+    for (let i = 0; i < n; i++) {
+      if ((!cfg.display.mesh_all && !clip.vis[t * nn + i]) || (g && g[i])) continue;   // mesh_all: also where the method says it is unseen
+      const a = 3 * (t * nn + i), x = clip.q[a] * clip.scale, y = clip.q[a + 1] * clip.scale, z = clip.q[a + 2] * clip.scale;
+      P[i * 3] = x; P[i * 3 + 1] = y; P[i * 3 + 2] = z;
+      const r = (i / G) | 0, c = i % G;
+      TC[i * 3] = (c * du + 0.5) / clip.W; TC[i * 3 + 1] = (r * dv + 0.5) / clip.H; TC[i * 3 + 2] = 0;
+      dep[i] = (x - C[0][3]) * C[0][2] + (y - C[1][3]) * C[1][2] + (z - C[2][3]) * C[2][2];
+      ok[i] = dep[i] > 1e-4 ? 1 : 0;
+    }
+  }
+  const tol = 1 + cfg.display.mesh_tol, idx = new Uint32Array(12 * (G - 1) * (G - 1));
+  const same = (a, b, c) => Math.max(dep[a], dep[b], dep[c]) <= tol * Math.min(dep[a], dep[b], dep[c]);
+  if (freshOn()) {                // the edge at cell scale, cleaned: a cell with few neighbours on its surface is a tooth
+    const ok2 = ok.slice(), dep2 = dep.slice(), sm = (x, y) => Math.max(x, y) <= tol * Math.min(x, y);   // and a gap closed on 6 of 8 sides is a notch
+    for (let r = 1; r + 1 < G; r++) for (let c = 1; c + 1 < G; c++) {
+      const i = r * G + c;
+      let m = 0, z = 0, zs = 0;
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        const j = i + dr * G + dc;
+        if (!ok[j]) continue;
+        if (ok[i]) { if (sm(dep[j], dep[i])) m++; }
+        else if (!z || sm(dep[j], z)) { z = z || dep[j]; zs += dep[j]; m++; }
+      }
+      if (ok[i] && m < 3) ok2[i] = 0;
+      else if (!ok[i] && m >= 6) {
+        const zz = zs / m, X = (c * du - K[2]) / K[0] * zz, Y = (r * dv - K[3]) / K[1] * zz;
+        for (let d = 0; d < 3; d++) P[i * 3 + d] = C[d][0] * X + C[d][1] * Y + C[d][2] * zz + C[d][3];
+        TC[i * 3] = (c * du + 0.5) / clip.W; TC[i * 3 + 1] = (r * dv + 0.5) / clip.H; TC[i * 3 + 2] = t;
+        ok2[i] = 1; dep2[i] = zz;
+      }
+    }
+    ok.set(ok2); dep.set(dep2);
+  }
+  let k = 0;
+  // each cell by whichever diagonal keeps its corners on one surface: at a boundary that crosses the cell the
+  // other diagonal keeps the half that the fixed one dropped, so edges run at 45 deg both ways instead of in teeth
+  const tri = (x, y, z) => ok[x] && ok[y] && ok[z] && same(x, y, z);
+  for (let r = 0; r + 1 < G; r++) for (let c = 0; c + 1 < G; c++) {
+    const a = r * G + c, b = a + 1, d = a + G, e = d + 1;
+    const t1 = tri(a, b, d), t2 = tri(b, d, e);
+    if (t1 && t2) { idx[k++] = a; idx[k++] = d; idx[k++] = b; idx[k++] = b; idx[k++] = d; idx[k++] = e; continue; }
+    const t3 = tri(a, b, e), t4 = tri(a, d, e);
+    if (t3 && t4) { idx[k++] = a; idx[k++] = e; idx[k++] = b; idx[k++] = a; idx[k++] = d; idx[k++] = e; continue; }
+    if (t1) { idx[k++] = a; idx[k++] = d; idx[k++] = b; }
+    if (t2) { idx[k++] = b; idx[k++] = d; idx[k++] = e; }
+    if (t3 && !t2) { idx[k++] = a; idx[k++] = e; idx[k++] = b; }
+    if (t4 && !t1) { idx[k++] = a; idx[k++] = d; idx[k++] = e; }
+  }
+  meshCount = k;
+  gl.bindVertexArray(meshVao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, meshPos); gl.bufferData(gl.ARRAY_BUFFER, P, gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, meshTc); gl.bufferData(gl.ARRAY_BUFFER, TC, gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, meshIdx); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx.subarray(0, k), gl.DYNAMIC_DRAW);
+  gl.bindVertexArray(null);
+}
+function uploadFresh() {          // the frame's own points (motion_seg.pack: frames): every lattice pixel of frame t as the model sees it at t
+  fCount = 0;
+  if (!freshOn()) return;
+  const n = G * G, base = t * n, D = cfg.drop, R = clip.f_r, C = clip.c2w[t], K = intrinsics(), z = zBuf;
+  // the drop rules, on this frame: low confidence, off its surface, small pieces
+  const cut = clip.conf_ref ? Math.floor(D.min_conf * clip.conf_ref * 255 + 0.5) : 0, tol = Math.round(D.edge_tol / 100 / LAP_UNIT);
+  const keep = new Uint8Array(n);
+  const FC = clip.f_conf, FO = clip.f_off;
+  for (let i = 0; i < n; i++) keep[i] = R[base + i] > 0 && !(cut > 0 && FC && FC[base + i] < cut) && !(tol > 0 && FO && FO[base + i] > tol) ? 1 : 0;
+  if ((D.min_group | 0) > 1) {    // pieces: kept cells joined to their kept neighbours at about their range
+    const parent = new Int32Array(n), size = new Int32Array(n);
+    for (let i = 0; i < n; i++) parent[i] = i;
+    const find = i => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    const join = (a, b) => {
+      if (!keep[b]) return;
+      const ra = R[base + a], rb = R[base + b];
+      if (Math.abs(ra - rb) >= SAME * Math.min(ra, rb)) return;
+      const x = find(a), y = find(b);
+      if (x !== y) parent[x] = y;
+    };
+    for (let r = 0, i = 0; r < G; r++) for (let c = 0; c < G; c++, i++) {
+      if (!keep[i]) continue;
+      if (c + 1 < G) join(i, i + 1);
+      if (r + 1 < G) { join(i, i + G); if (c + 1 < G) join(i, i + G + 1); if (c > 0) join(i, i + G - 1); }
+    }
+    for (let i = 0; i < n; i++) if (keep[i]) size[find(i)]++;
+    for (let i = 0; i < n; i++) if (keep[i] && size[find(i)] < D.min_group) keep[i] = 0;
+  }
+  const du = clip.W / G, dv = clip.H / G;
+  for (let r = 0, i = 0; r < G; r++) for (let c = 0; c < G; c++, i++) {
+    if (!keep[i]) { z[i] = 0; continue; }
+    const x = (c * du - K[2]) / K[0], y = (r * dv - K[3]) / K[1];
+    z[i] = R[base + i] / Math.sqrt(x * x + y * y + 1);
+  }
+  // the movers' cells: a shown mover lands there, at about the depth the frame has there; then the pinholes inside them
+  const M = scene.M, o = t * M, hit = new Uint8Array(n), mark = new Uint8Array(n);
+  for (let j = 0; j < M; j++) {
+    const ci = mShow[o + j] ? mCell[o + j] : -1;
+    if (ci >= 0 && z[ci] > 0 && Math.abs(mZ[o + j] - z[ci]) <= AGREE * z[ci]) hit[ci] = 1;
+  }
+  for (let r = 0, i = 0; r < G; r++) for (let c = 0; c < G; c++, i++) {
+    if (!keep[i]) continue;
+    if (hit[i]) { mark[i] = 1; continue; }
+    let cnt = 0;
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+      const rr = r + a, cc = c + b;
+      if ((a || b) && rr >= 0 && rr < G && cc >= 0 && cc < G) { const j = rr * G + cc; if (hit[j] && Math.abs(z[j] - z[i]) <= AGREE * z[i]) cnt++; }
+    }
+    if (cnt >= 5) mark[i] = 1;
+  }
+  const red = cfg.display.mover_color === "red", show = cfg.display.show, ang = cellAngle(t);
+  const P = new Float32Array(n * 3), Cc = new Uint8Array(n * 3), Rr = new Float32Array(n);
+  let k = 0;
+  for (let r = 0, i = 0; r < G; r++) for (let c = 0; c < G; c++, i++) {
+    if (!keep[i] || (show === "moving" && !mark[i]) || (show === "background" && mark[i])) continue;
+    const zz = z[i], X = (c * du - K[2]) / K[0] * zz, Y = (r * dv - K[3]) / K[1] * zz, q = 3 * (base + i);
+    for (let d = 0; d < 3; d++) { P[k * 3 + d] = C[d][0] * X + C[d][1] * Y + C[d][2] * zz + C[d][3]; Cc[k * 3 + d] = tint(clip.f_rgb[q + d], d, red && mark[i]); }
+    Rr[k++] = ang * zz;
+  }
+  fCount = k;
+  gl.bindBuffer(gl.ARRAY_BUFFER, fBuf); gl.bufferData(gl.ARRAY_BUFFER, P.subarray(0, k * 3), gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, fCol); gl.bufferData(gl.ARRAY_BUFFER, Cc.subarray(0, k * 3), gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, fRad); gl.bufferData(gl.ARRAY_BUFFER, Rr.subarray(0, k), gl.DYNAMIC_DRAW);
+  gl.bindTexture(gl.TEXTURE_2D, zTex);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, G, G, gl.RED, gl.FLOAT, z);
+}
+const V3 = {
+  sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+  mul: (a, s) => [a[0] * s, a[1] * s, a[2] * s], dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  norm: a => { const l = Math.hypot(...a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
+};
+function rotate(v, k, ang) {
+  const c = Math.cos(ang), s = Math.sin(ang);
+  return V3.add(V3.add(V3.mul(v, c), V3.mul(V3.cross(k, v), s)), V3.mul(k, V3.dot(k, v) * (1 - c)));
+}
+const camPose = tt => { const M = clip.c2w[tt]; return { eye: [M[0][3], M[1][3], M[2][3]], fwd: [M[0][2], M[1][2], M[2][2]], up: [-M[0][1], -M[1][1], -M[2][1]] }; };
+function medianDepth() {          // of the static points, along the input camera's axis
+  const s = scene, pose = camPose(t), v = [], step = Math.max(1, Math.floor(s.S / 5000));
+  for (let i = 0; i < s.S; i += step)
+    v.push(V3.dot(V3.sub([s.s_q[i * 3] * s.scale, s.s_q[i * 3 + 1] * s.scale, s.s_q[i * 3 + 2] * s.scale], pose.eye), pose.fwd));
+  v.sort((a, b) => a - b);
+  return Math.max(v[v.length >> 1] || 1, 0.05);
+}
+function resetCamera() {           // the free view starts as the input camera of frame t (as MoGe's demo), turning about its median depth
+  const pose = camPose(t), d = medianDepth();
+  cam = { target: V3.add(pose.eye, V3.mul(pose.fwd, d)), up: pose.up, off: V3.mul(pose.fwd, -1), dist: d, fov: null };
+}
+function lookAt(eye, tg, up) {
+  const z = V3.norm(V3.sub(eye, tg)), x = V3.norm(V3.cross(up, z)), y = V3.cross(z, x);
+  return [x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -V3.dot(x, eye), -V3.dot(y, eye), -V3.dot(z, eye), 1];
+}
+function persp(fovy, asp, n, f) {
+  const q = 1 / Math.tan(fovy / 2);
+  return [q / asp, 0, 0, 0, 0, q, 0, 0, 0, 0, (f + n) / (n - f), -1, 0, 0, 2 * f * n / (n - f), 0];
+}
+function mmul(a, b) {
+  const o = new Array(16).fill(0);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) for (let k = 0; k < 4; k++) o[j * 4 + i] += a[k * 4 + i] * b[j * 4 + k];
+  return o;
+}
+const intrinsics = () => clip.K ? clip.K[t] : [clip.fy, clip.fy, (clip.W - 1) / 2, (clip.H - 1) / 2];
+function cameraMatrix(eye, axes, w, h, near, far) {   // a camera at `eye` with axes [right, down, forward] and the input intrinsics; the whole frame fits the view
+  const K = intrinsics(), s = Math.min(w / clip.W, h / clip.H), ox = (w - clip.W * s) / 2, oy = (h - clip.H * s) / 2;
+  // pixel (u, v) is at ((u + 0.5) s + ox, (v + 0.5) s + oy) of the view; clip = P [R^T | -R^T eye] (OpenCV camera axes)
+  const P = [[2 * s * K[0] / w, 0, 2 * ((K[2] + 0.5) * s + ox) / w - 1, 0], [0, -2 * s * K[1] / h, 1 - 2 * ((K[3] + 0.5) * s + oy) / h, 0],
+             [0, 0, (far + near) / (far - near), -2 * far * near / (far - near)], [0, 0, 1, 0]];
+  const V = axes.map(a => [a[0], a[1], a[2], -V3.dot(a, eye)]).concat([[0, 0, 0, 1]]);
+  const out = new Array(16).fill(0);
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) for (let j = 0; j < 4; j++) out[c * 4 + r] += P[r][j] * V[j][c];
+  return out;
+}
+// follow: the free view rides with the input camera (moving-camera clips). The orbit camera is kept in the world of
+// frame followRef and moved by the camera's own motion from there to frame t (positions and axes averaged over +-3 frames).
+let follow = false, followRef = 0;
+const camMoves = () => clip.c2w.some(c => Math.hypot(c[0][3] - clip.c2w[0][0][3], c[1][3] - clip.c2w[0][1][3], c[2][3] - clip.c2w[0][2][3]) > 0.05);
+function smoothPose(f) {
+  const C = clip.c2w; let e = [0, 0, 0], x = [0, 0, 0], y = [0, 0, 0];
+  for (let s = Math.max(0, f - 3); s <= Math.min(C.length - 1, f + 3); s++) {
+    const c = C[s]; e = V3.add(e, [c[0][3], c[1][3], c[2][3]]); x = V3.add(x, [c[0][0], c[1][0], c[2][0]]); y = V3.add(y, [c[0][1], c[1][1], c[2][1]]);
+  }
+  x = V3.norm(x); const z = V3.norm(V3.cross(x, y)); y = V3.cross(z, x);
+  return { e: V3.mul(e, 1 / (Math.min(C.length - 1, f + 3) - Math.max(0, f - 3) + 1)), R: [x, y, z] };
+}
+function followXf(f) {            // world -> world: frame followRef's camera to frame f's camera
+  const a = smoothPose(followRef), b = smoothPose(f);
+  const rot = v => { const l = a.R.map(r => V3.dot(r, v)); return V3.add(V3.add(V3.mul(b.R[0], l[0]), V3.mul(b.R[1], l[1])), V3.mul(b.R[2], l[2])); };
+  return { rot, pt: q => V3.add(b.e, rot(V3.sub(q, a.e))) };
+}
+function setFollow(on) {
+  if (!on && follow) {            // keep the camera where it is on screen
+    const X = followXf(Math.round(t));
+    cam = { ...cam, target: X.pt(cam.target), off: X.rot(cam.off), up: X.rot(cam.up) };
+  }
+  follow = on; followRef = Math.round(t);
+  $("vFollow").setAttribute("aria-pressed", String(follow));
+}
+function draw(k = 1) {            // k: resolution multiplier (PNG export)
+  const w = glc.clientWidth, h = glc.clientHeight, px = devicePixelRatio * k, D = cfg.display;
+  glc.width = Math.round(w * px); glc.height = Math.round(h * px);
+  gl.viewport(0, 0, glc.width, glc.height);
+  const bg = D.background === "dark" ? [0.067, 0.075, 0.086] : [1, 1, 1];
+  gl.clearColor(bg[0], bg[1], bg[2], 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  if (!scene) return;
+  gl.enable(gl.DEPTH_TEST);
+  // the input camera of frame t, or the free view: with the input intrinsics, or a plain perspective (views saved before)
+  const size = mode === "input" ? 1 : cam.dist, far = size * 100 + 50 + scene.scale * 32767 * 8, near = Math.max(0.005, size / 300);
+  let fovy, M;
+  if (mode !== "input" && typeof cam.fov === "number") {
+    fovy = cam.fov;
+    let eye = V3.add(cam.target, V3.mul(cam.off, cam.dist)), tg = cam.target, up = cam.up;
+    if (follow) { const X = followXf(Math.round(t)); eye = X.pt(eye); tg = X.pt(tg); up = X.rot(up); }
+    M = mmul(persp(fovy, w / h, near, far), lookAt(eye, tg, up));
+  } else {
+    fovy = 2 * Math.atan(h / 2 / (intrinsics()[1] * Math.min(w / clip.W, h / clip.H)));
+    if (mode === "input") { const C = clip.c2w[t]; M = cameraMatrix([C[0][3], C[1][3], C[2][3]], [0, 1, 2].map(i => [C[0][i], C[1][i], C[2][i]]), w, h, near, far); }
+    else {
+      const fwd = V3.mul(cam.off, -1), right = V3.norm(V3.cross(fwd, cam.up));
+      let eye = V3.add(cam.target, V3.mul(cam.off, cam.dist)), axes = [right, V3.cross(fwd, right), fwd];
+      if (follow) { const X = followXf(Math.round(t)); eye = X.pt(eye); axes = axes.map(X.rot); }
+      M = cameraMatrix(eye, axes, w, h, near, far);
+    }
+  }
+  const dense = D.dense && scene.b_r && scene.b_r.length + scene.d_m.length > 0;
+  if (dense) {
+    gl.useProgram(dProg);
+    gl.uniformMatrix4fv(gl.getUniformLocation(dProg, "M"), false, M);
+    gl.uniform1f(gl.getUniformLocation(dProg, "F"), D.dense_size * glc.height / (2 * Math.tan(fovy / 2)));
+    gl.uniform1f(gl.getUniformLocation(dProg, "Smin"), px);
+    if (D.show !== "moving") { gl.bindVertexArray(bVao); gl.drawArrays(gl.POINTS, 0, scene.b_r.length); }
+    if (D.show !== "background") { gl.bindVertexArray(rVao); gl.drawArrays(gl.POINTS, 0, rCount); }
+  }
+  const meshOn = cfg.display.mesh && meshCount > 0;
+  if (meshOn) {                   // the textured surface of frame t, alone (then the trails)
+    gl.useProgram(meshProg);
+    gl.uniformMatrix4fv(gl.getUniformLocation(meshProg, "M"), false, M);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D_ARRAY, tex); gl.uniform1i(gl.getUniformLocation(meshProg, "tex"), 1);
+    gl.bindVertexArray(meshVao); gl.drawElements(gl.TRIANGLES, meshCount, gl.UNSIGNED_INT, 0);
+    gl.bindVertexArray(null); gl.activeTexture(gl.TEXTURE0);
+  }
+  // the tracks: static points at the frames of their life (clips packed without it: from the first frame they are seen), movers where seen
+  gl.useProgram(pProg);
+  gl.uniformMatrix4fv(gl.getUniformLocation(pProg, "M"), false, M);
+  gl.uniform1i(gl.getUniformLocation(pProg, "Round"), meshOn || D.round_dots ? 1 : 0);   // over a surface, loose dots read better round; round_dots: the point-cloud look
+  gl.uniform1f(gl.getUniformLocation(pProg, "F"), D.point_scale * glc.height / (2 * Math.tan(fovy / 2)));
+  gl.uniform1f(gl.getUniformLocation(pProg, "Smin"), px);
+  const fresh = freshOn();        // the frame's own points stand for everything the frame sees; frozen points only where it does not
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, zTex); gl.uniform1i(gl.getUniformLocation(pProg, "Dz"), 0);
+  gl.uniform1i(gl.getUniformLocation(pProg, "Seen"), fresh ? 1 : 0);
+  if (fresh) {
+    const C = clip.c2w[t], K = intrinsics();
+    gl.uniform3f(gl.getUniformLocation(pProg, "Ce"), C[0][3], C[1][3], C[2][3]);
+    gl.uniformMatrix3fv(gl.getUniformLocation(pProg, "Cr"), false, new Float32Array([C[0][0], C[0][1], C[0][2], C[1][0], C[1][1], C[1][2], C[2][0], C[2][1], C[2][2]]));
+    gl.uniform4f(gl.getUniformLocation(pProg, "Kc"), K[0], K[1], K[2], K[3]);
+    gl.uniform2f(gl.getUniformLocation(pProg, "WH"), clip.W, clip.H);
+  }
+  if ((!meshOn || D.mesh_fill) && D.show !== "moving" && (!dense || D.static_tracks)) {   // mesh_fill: earlier frames' static points in the surface's holes
+    gl.uniform1i(gl.getUniformLocation(pProg, "T0"), D.static_all || !scene.s_life ? -1 : t);
+    gl.bindVertexArray(sVao); gl.drawArrays(gl.POINTS, 0, scene.s_life ? scene.S : scene.s_count[D.static_all ? scene.T - 1 : t]);
+  }
+  gl.uniform1i(gl.getUniformLocation(pProg, "Seen"), 0);
+  gl.uniform1i(gl.getUniformLocation(pProg, "T0"), -1);
+  if (meshOn) { /* the surface already has everything this frame sees */ }
+  else if (fresh) { gl.bindVertexArray(fVao); gl.drawArrays(gl.POINTS, 0, fCount); }
+  else if (D.show !== "background") { gl.bindVertexArray(mVao); gl.drawArrays(gl.POINTS, 0, mCount); }
+  if (D.show !== "background") {
+    const w0 = Math.max(0, t - (D.trail | 0)), cnt = segOff[t] - segOff[w0];
+    if (showTrails && cnt > 0) {
+      gl.useProgram(lProg);
+      if (D.trails_on_top) gl.disable(gl.DEPTH_TEST);
+      gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.uniform1f(gl.getUniformLocation(lProg, "A"), D.trail_alpha);
+      gl.uniform1f(gl.getUniformLocation(lProg, "T0"), t);
+      gl.uniform1f(gl.getUniformLocation(lProg, "L"), Math.min(D.trail | 0, t));
+      gl.uniform1f(gl.getUniformLocation(lProg, "Dk"), D.trail_decay);
+      gl.uniformMatrix4fv(gl.getUniformLocation(lProg, "M"), false, M);
+      gl.uniform2f(gl.getUniformLocation(lProg, "V"), glc.width, glc.height);
+      gl.uniform1f(gl.getUniformLocation(lProg, "W"), D.line_width * px);
+      gl.bindVertexArray(lVao);
+      const base = segOff[w0];
+      gl.bindBuffer(gl.ARRAY_BUFFER, lBuf);
+      gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, base * 24);
+      gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, base * 24 + 12);
+      gl.bindBuffer(gl.ARRAY_BUFFER, lCol);
+      gl.vertexAttribPointer(2, 3, gl.UNSIGNED_BYTE, true, 4, base * 4);
+      gl.vertexAttribPointer(3, 1, gl.UNSIGNED_BYTE, false, 4, base * 4 + 3);
+      gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, cnt);
+      gl.disable(gl.BLEND);
+    }
+  }
+}
+function setMode(m) {
+  if (m === "orbit" && mode === "input") { resetCamera(); followRef = Math.round(t); }      // go on from where the input camera is
+  mode = m;
+  $("vOrbit").setAttribute("aria-pressed", String(m === "orbit"));
+  $("vInput").setAttribute("aria-pressed", String(m === "input"));
+  refresh();
+}
+let drag = null;
+glc.addEventListener("contextmenu", e => e.preventDefault());
+glc.addEventListener("mousedown", e => { drag = { x: e.clientX, y: e.clientY, pan: e.shiftKey || e.button === 2 }; if (mode === "input") setMode("orbit"); });
+window.addEventListener("mouseup", () => { drag = null; });
+window.addEventListener("mousemove", e => {
+  if (!drag || !cam) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  drag.x = e.clientX; drag.y = e.clientY;
+  const right = V3.norm(V3.cross(cam.up, cam.off)), camUp = V3.cross(cam.off, right);
+  if (drag.pan) {
+    const s = cam.dist * 0.0015;
+    cam.target = V3.add(cam.target, V3.add(V3.mul(right, -dx * s), V3.mul(camUp, dy * s)));
+  } else {
+    let off = rotate(cam.off, cam.up, -dx * 0.006);
+    const next = rotate(off, V3.norm(V3.cross(cam.up, off)), -dy * 0.006);
+    if (Math.abs(V3.dot(next, cam.up)) < 0.98) off = next;
+    cam.off = V3.norm(off);
+  }
+  refresh();
+});
+glc.addEventListener("wheel", e => { e.preventDefault(); if (mode === "input") setMode("orbit"); cam.dist *= Math.exp(e.deltaY * 0.001); refresh(); }, { passive: false });
+$("vOrbit").onclick = () => setMode("orbit");
+$("vInput").onclick = () => setMode("input");
+$("vFollow").onclick = () => { setFollow(!follow); if (mode !== "orbit") setMode("orbit"); else refresh(); };
+$("vPanel").onclick = () => { const off = document.body.classList.toggle("noside"); $("vPanel").setAttribute("aria-pressed", String(!off)); draw(); };
+$("vTrails").onclick = () => { showTrails = !showTrails; $("vTrails").setAttribute("aria-pressed", String(showTrails)); draw(); };
+
+// ------------------------------------------------------------------ state
+const gather = () => ({ seg: cfg.seg, drop: cfg.drop, display: cfg.display, view: { mode, target: cam.target, off: cam.off, dist: cam.dist, up: cam.up, fov: typeof cam.fov === "number" ? cam.fov : null, ...(follow ? { follow: true, follow_ref: followRef } : {}) }, frame: t });
+function applyView(v) {
+  if (v && v.target) { cam = { target: v.target, off: v.off, dist: v.dist, up: v.up, fov: v.fov === undefined ? 0.9 : v.fov }; mode = v.mode === "input" ? "input" : "orbit"; }   // views saved before had a 0.9 rad perspective
+  else { resetCamera(); mode = "orbit"; }
+  const moves = camMoves();
+  $("vFollow").hidden = !moves;
+  follow = !!(v && v.follow) && moves; followRef = v && Number.isInteger(v.follow_ref) ? v.follow_ref : Math.round(t);
+  $("vFollow").setAttribute("aria-pressed", String(follow));
+  $("vOrbit").setAttribute("aria-pressed", String(mode === "orbit"));
+  $("vInput").setAttribute("aria-pressed", String(mode === "input"));
+}
+function status(text, cls) { if (VIEW) return; $("status").innerHTML = text; $("status").className = cls || ""; }
+function refresh() {              // display or view changed
+  syncControls(); draw();
+  if (!VIEW && saved && JSON.stringify(gather()) !== saved && $("status").className !== "err") status("有未保存的修改", "dirty");
+}
+function showCounts() {
+  if (VIEW) return;
+  const c = scene.counts;
+  if (cfg.seg.method === "sam") {
+    $("counts").innerHTML = `显示 ${c.shown.toLocaleString()} / ${clip.tracks.toLocaleString()} 条 track（另有 ${c.dropped.toLocaleString()} 个被去掉：低置信度、飞点、小碎片、掩码边缘）· ` +
+      `掩码内（运动）${c.movers.toLocaleString()} · 静态 ${c.static.toLocaleString()}` + (c.copies ? `（另有 ${c.copies.toLocaleString()} 个重复的点不画）` : "");
+    $("timing").textContent = `分割 ${scene.ms.toFixed(0)} ms`;
+    return;
+  }
+  $("counts").innerHTML = `显示 ${c.shown.toLocaleString()} / ${clip.tracks.toLocaleString()} 条 track（另有 ${c.dropped.toLocaleString()} 个低置信度的点、飞点或小碎片里的点被去掉）· 运动种子 ${c.seeds.toLocaleString()} · ` +
+    `成团后运动 ${c.movers.toLocaleString()} · 静态 ${c.static.toLocaleString()}` + (c.copies ? `（另有 ${c.copies.toLocaleString()} 个重复的点不画）` : "") +
+    (c.dense === undefined ? "" : `<br>逐像素点：背景 ${c.dense.toLocaleString()} · 跟着运动物体走 ${c.riders.toLocaleString()}`) + `<br>阈值 ${(scene.thresh * 100).toFixed(1)} cm` +
+    `（这个 clip 的 P99 运动量 = ${(clip.motion_max * 100).toFixed(1)} cm）`;
+  $("timing").textContent = `分割 ${scene.ms.toFixed(0)} ms`;
+}
+let pending = false;
+function rebuild() {              // split parameters changed
+  syncControls();
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(() => {
+    pending = false;
+    scene = buildScene(clip, cfg.seg, cfg.drop);
+    uploadStatic(); prepareMovers(); uploadMovers(); showCounts(); refresh();
+  });
+}
+function setFrame(v) {
+  t = Math.max(0, Math.min(clip.T - 1, v));
+  $("t").value = t; $("tOut").textContent = `t = ${t}`;
+  $("inset").src = frames[t].src;
+  uploadMovers(); refresh();
+}
+$("t").addEventListener("input", () => setFrame(+$("t").value));
+function tickPlay() { if (!playing) return; setFrame((t + 1) % clip.T); setTimeout(tickPlay, 125); }
+$("play").onclick = () => { playing = !playing; $("play").textContent = playing ? "❚❚" : "▶"; tickPlay(); };
+window.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" && e.target.type !== "range") return;
+  if (e.code === "Space") { e.preventDefault(); $("play").click(); }
+  if (e.key === "ArrowRight") setFrame(t + 1);
+  if (e.key === "ArrowLeft") setFrame(t - 1);
+  if (e.key === "r" || e.key === "R") { resetCamera(); setMode("orbit"); }
+  if (e.key === "i" || e.key === "I") setMode("input");
+  if ((e.key === "p" || e.key === "P") && !VIEW) $("png").click();
+});
+window.addEventListener("resize", () => draw());
+
+// ------------------------------------------------------------------ save / export / PNG
+function download(name, href) { const a = document.createElement("a"); a.href = href; a.download = name; a.click(); }
+async function save() {
+  const body = JSON.stringify(gather());
+  try {
+    const r = await fetch(`data/${clip.id}.config.json`, { method: "PUT", body });
+    const out = await r.json();
+    if (r.status === 400) { status(`保存失败：服务器不接受这些设置（${out.error}）。多半是服务器还在跑旧版代码，重启 <code>motion_seg.py serve</code> 即可。`, "err"); return false; }
+    if (!r.ok) throw new Error(out.error || r.status);
+    saved = body;
+    const opt = $("clip").selectedOptions[0];
+    if (opt && !opt.textContent.startsWith("★")) opt.textContent = "★ " + clip.id;
+    status(`已保存 ✓ ${new Date().toLocaleTimeString()}<br><code>${out.saved.join("<br>")}</code>`, "ok");
+    return true;
+  } catch (e) {
+    download(`${clip.id}.config.json`, URL.createObjectURL(new Blob([JSON.stringify(gather(), null, 1) + "\n"], { type: "application/json" })));
+    status(`这个服务器不能保存（${e.message}）。设置已下载成文件：放到 <code>data/${clip.id}.config.json</code> 即可。用 <code>motion_seg.py serve</code> 起的服务才支持直接保存。`, "err");
+    return false;
+  }
+}
+async function loadSam(id) {       // data/<id>.sam.{json,bin}: the last SAM run's label of every track
+  try {
+    const r = await fetch(`data/${id}.sam.json`, { cache: "no-store" });
+    if (!r.ok) return null;
+    const info = await r.json();
+    const b = await fetch(`data/${id}.sam.bin`, { cache: "no-store" });
+    return b.ok ? { info, labels: new Uint8Array(await b.arrayBuffer()) } : null;
+  } catch (e) { return null; }
+}
+function showSam() {
+  const s = clip.samInfo;
+  $("samPreview").hidden = !s;
+  if (!s) { $("samStatus").textContent = "这个 case 还没有 SAM 结果：填提示词，点「跑 SAM」。"; return; }
+  $("samPreview").src = `data/${clip.id}.sam.jpg?${encodeURIComponent(s.time)}`;
+  const stale = cfg.seg.sam_prompts.split(",").map(x => x.trim()).filter(Boolean).join(", ") !== s.prompts.join(", ");
+  $("samStatus").innerHTML = `现有结果（${s.time}）：` + s.prompts.map(p => `${p} ${s.tracks[p].toLocaleString()} 条 track，${s.mask_frames[p]}/${s.T} 帧有掩码`).join("；") +
+    (stale ? "<br><b>提示词和这次结果不一样，要用新的提示词请再点「跑 SAM」。</b>" : "");
+}
+$("seg_method").addEventListener("input", () => { cfg.seg.method = $("seg_method").value; showSam(); rebuildNow(); });
+$("seg_sam_prompts").addEventListener("input", () => { cfg.seg.sam_prompts = $("seg_sam_prompts").value; showSam(); refresh(); });
+$("samRun").onclick = async () => {
+  const id = clip.id, started = Date.now();
+  $("samRun").disabled = true;
+  $("samStatus").textContent = "SAM 正在跑（约 2–3 分钟，可以先看别的 case）…";
+  try {
+    const r = await fetch(`sam?id=${encodeURIComponent(id)}`, { method: "POST", body: JSON.stringify({ prompts: cfg.seg.sam_prompts }) });
+    let out = {};
+    try { out = await r.json(); } catch (e) { throw new Error("这个服务器不能跑 SAM：要用 motion_seg.py serve 起的本机页面"); }
+    if (!r.ok) throw new Error(out.error || r.status);
+    if (clip.id === id) {
+      const s = await loadSam(id);
+      clip.sam = s && s.labels; clip.samInfo = s && s.info;
+      showSam(); rebuildNow();
+      $("samStatus").innerHTML += `<br>刚跑完，用时 ${((Date.now() - started) / 1000).toFixed(0)} 秒。`;
+    }
+  } catch (e) { if (clip.id === id) $("samStatus").innerHTML = `<span style="color:#c00">SAM 失败：${e.message}</span>`; }
+  $("samRun").disabled = false;
+};
+let rawStash = null;               // 去掉全部修饰: what the three clean-up settings were before
+function setRaw(on) {
+  if (on && !rawStash) {
+    rawStash = { min_conf: cfg.drop.min_conf, edge_tol: cfg.drop.edge_tol, min_group: cfg.drop.min_group, cluster_min: cfg.seg.cluster_min, smooth: cfg.display.smooth, mover_density: cfg.display.mover_density };
+    cfg.drop.min_conf = 0; cfg.drop.edge_tol = 0; cfg.drop.min_group = 0; cfg.seg.cluster_min = 0; cfg.display.smooth = 1; cfg.display.mover_density = 0;
+  } else if (!on && rawStash) {
+    cfg.drop.min_conf = rawStash.min_conf; cfg.drop.edge_tol = rawStash.edge_tol; cfg.drop.min_group = rawStash.min_group; cfg.seg.cluster_min = rawStash.cluster_min; cfg.display.smooth = rawStash.smooth; cfg.display.mover_density = rawStash.mover_density;
+    rawStash = null;
+  }
+  $("raw").setAttribute("aria-pressed", String(!!rawStash));
+  $("raw").textContent = rawStash ? "恢复修饰" : "去掉全部修饰";
+}
+$("raw").onclick = () => { setRaw(!rawStash); rebuildNow(); };
+$("save").onclick = save;
+$("export").onclick = async () => {
+  if (!await save()) return;
+  status("正在导出…", "");
+  try {
+    const r = await fetch(`export?id=${encodeURIComponent(clip.id)}`, { method: "POST" });
+    const out = await r.json();
+    if (!r.ok) throw new Error(out.error || r.status);
+    status(`已保存并导出 ✓ ${new Date().toLocaleTimeString()}：<a href="${out.url}" target="_blank">打开导出的页面</a><br>文件夹 <code>${out.folder}</code>`, "ok");
+  } catch (e) { status(`导出失败：${e.message}`, "err"); }
+};
+$("png").onclick = () => { draw(2); download(`${clip.id}_t${String(t).padStart(2, "0")}.png`, glc.toDataURL("image/png")); draw(1); };
+$("revert").onclick = () => { rawStash = null; setRaw(false); const c = withDefaults(saved ? JSON.parse(saved) : null, clip.defaults); cfg = c; applyView(c.view); t = Math.min(c.frame, clip.T - 1); rebuildNow(); };
+$("defaults").onclick = () => { rawStash = null; setRaw(false); cfg = withDefaults(null, clip.defaults); rebuildNow(); };
+function rebuildNow() {
+  scene = buildScene(clip, cfg.seg, cfg.drop);
+  uploadStatic(); prepareMovers(); showCounts(); setFrame(t);
+}
+
+// ------------------------------------------------------------------ start
+let selectSeq = 0;                // only the latest request wins when clips are picked faster than they load
+async function selectClip(id) {
+  const seq = ++selectSeq;
+  playing = false; $("play").textContent = "▶";
+  const stored = await loadConfig(id);
+  if (seq !== selectSeq) return;
+  if (VIEW) {
+    const c = await loadBin(`${id}.scene`, `${id}.scene`);
+    if (seq !== selectSeq) return;
+    clip = c;
+    scene = clip;
+  } else {
+    clip = await loadBin(id, id);
+    const s = await loadSam(id), fits = s && s.labels.length === clip.n;     // labels of an earlier packing do not apply
+    clip.sam = fits ? s.labels : null; clip.samInfo = fits ? s.info : null;
+    rawStash = null; setRaw(false);
+  }
+  cfg = withDefaults(stored, clip.defaults);
+  cfg.display.trail = Math.min(cfg.display.trail, clip.T - 1);
+  frames = Array.from({ length: clip.T }, (_, i) => { const im = new Image(); im.src = `data/${id}/t${String(i).padStart(2, "0")}.webp${VQ}`; return im; });
+  loadTexture(id, frames);
+  $("t").max = clip.T - 1;
+  $("display_trail").max = clip.T - 1;
+  for (const k of ["dense", "dense_size", "static_tracks"]) {       // only for clips packed with their dense points
+    const row = $(`display_${k}`).closest(".row, .checks"), help = row.nextElementSibling;
+    row.hidden = !clip.b_r;
+    if (help && help.classList.contains("help")) help.hidden = !clip.b_r;
+  }
+  if (!VIEW) { $("dest").textContent = `data/${id}.config.json`; showSam(); }
+  location.hash = id;
+  t = Math.min(cfg.frame, clip.T - 1);
+  if (!VIEW) scene = buildScene(clip, cfg.seg, cfg.drop);
+  applyView(cfg.view);
+  uploadStatic(); prepareMovers(); showCounts();
+  saved = stored ? JSON.stringify(gather()) : "";
+  status(!stored ? "还没有保存过设置（现在是默认值）" : earlier(stored) ? "已载入保存的视角和显示设置。分割阈值和去飞点参数是旧版存的（按旧的运动量调的），已换成新默认值，需要的话重新调一下再保存。" : "已载入保存的设置", stored ? "ok" : "");
+  baseDisplay = JSON.parse(JSON.stringify(cfg.display));
+  if (styleMode !== "surface") applyStyle(styleMode);
+  setFrame(t);
+  if (VIEW) $("play").click();
+}
+// a page that embeds this one can switch the look: "surface" (the clip's saved display) or "points" (every point the
+// model tracked, as round dots, the whole scene at once, as D4RT's all-pixels view), kept across clips
+let styleMode = "surface", baseDisplay = null;
+const POINTS = { mesh: false, frame_points: false, static_all: true, point_scale: 1.7, round_dots: true, mover_density: 0 };
+function applyStyle(mode) {
+  styleMode = mode;
+  if (!clip || !baseDisplay) return;
+  cfg.display = mode === "points" ? { ...JSON.parse(JSON.stringify(baseDisplay)), ...POINTS } : JSON.parse(JSON.stringify(baseDisplay));
+  setFrame(t); refresh();
+}
+async function selfCheck() {      // ?check[=<JSON seg overrides>]: the lines of `motion_seg.py check SITE [--set JSON]`
+  const lines = [], over = JSON.parse(new URLSearchParams(location.search).get("check") || "{}");
+  for (const c of DATA.clips) {
+    const C = await loadBin(c.id, c.id), cf = withDefaults(await loadConfig(c.id), C.defaults), sm = await loadSam(c.id);
+    C.sam = sm && sm.labels;
+    for (const [k, v] of Object.entries(over)) (k in cf.drop ? cf.drop : cf.seg)[k] = v;
+    lines.push(JSON.stringify({ id: c.id, ...buildScene(C, cf.seg, cf.drop).counts }));
+  }
+  $("check").textContent = lines.join("\n"); $("check").hidden = false;
+  document.title = "checked";
+}
+
+document.body.classList.toggle("view", VIEW);
+if (VIEW) { $("title").textContent = "SCALE4D"; document.title = "SCALE4D · 4D tracks"; document.body.classList.add("noside"); $("displayLegend").textContent = "显示设置"; }
+else { buildRows($("segRows"), "seg", SEG_UI); buildRows($("dropRows"), "drop", DROP_UI); }
+buildRows($("displayRows"), "display", DISPLAY_UI);
+initGL();
+const ordered = [...DATA.clips].sort((a, b) => (b.saved ? 1 : 0) - (a.saved ? 1 : 0));      // saved clips (the examples) first
+const option = c => `<option value="${c.id}">${c.saved ? "★ " : ""}${c.id}</option>`;
+if (DATA.clips.some(c => c.group)) {             // a combined site: the saved clips, then one block per source
+  const blocks = new Map([["★ 已保存", ordered.filter(c => c.saved)]]);
+  for (const c of DATA.clips) { const g = c.group || "other"; if (!blocks.has(g)) blocks.set(g, []); blocks.get(g).push(c); }
+  $("clip").innerHTML = [...blocks].filter(([, v]) => v.length).map(([g, v]) => `<optgroup label="${g} (${v.length})">${v.map(option).join("")}</optgroup>`).join("");
+} else $("clip").innerHTML = ordered.map(option).join("");
+$("clip").addEventListener("change", () => selectClip($("clip").value));
+window.addEventListener("message", e => {
+  const m = e.data;
+  if (m && m.type === "scale4d-load" && DATA.clips.some(c => c.id === m.id) && (!clip || clip.id !== m.id)) {
+    $("clip").value = m.id; selectClip(m.id);
+  }
+  if (m && m.type === "scale4d-style" && (m.style === "surface" || m.style === "points")) applyStyle(m.style);
+});
+if (!VIEW && new URLSearchParams(location.search).has("check")) selfCheck();
+else if (DATA.clips.length) {
+  const first = DATA.clips.find(c => c.id === location.hash.slice(1)) || ordered[0];
+  $("clip").value = first.id;
+  selectClip(first.id);
+}
+</script>
+</html>

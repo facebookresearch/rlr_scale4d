@@ -1,0 +1,53 @@
+{
+ "cases": {
+  "adt_skeleton": {
+   "on": "scale4d_e5ceee3fad",
+   "off": "scale4d_3f097bc6bb"
+  },
+  "dexycb_subject05": {
+   "on": "scale4d_dc7b133f98",
+   "off": "scale4d_b8e3ae5bb5"
+  },
+  "dexycb_subject02": {
+   "on": "scale4d_3a3f8fc268",
+   "off": "scale4d_1b3d97fe57"
+  }
+ },
+ "names": {
+  "adt_skeleton": "ADT \u00b7 decoration",
+  "dexycb_subject05": "DexYCB \u00b7 subject 05",
+  "dexycb_subject02": "DexYCB \u00b7 subject 02"
+ },
+ "scores": {
+  "adt_skeleton": {
+   "on": {
+    "aj": 96.6,
+    "err_cm": 1.8
+   },
+   "off": {
+    "aj": 60.3,
+    "err_cm": 9.7
+   }
+  },
+  "dexycb_subject05": {
+   "on": {
+    "aj": 88.3,
+    "err_cm": 3.6
+   },
+   "off": {
+    "aj": 44.3,
+    "err_cm": 14.6
+   }
+  },
+  "dexycb_subject02": {
+   "on": {
+    "aj": 86.1,
+    "err_cm": 4.3
+   },
+   "off": {
+    "aj": 41.1,
+    "err_cm": 18.8
+   }
+  }
+ }
+}

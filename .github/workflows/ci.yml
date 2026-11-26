@@ -1,0 +1,61 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
+
+name: Repository documentation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  documentation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Check repository documents and links
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          from urllib.parse import unquote, urlsplit
+
+          required = [
+              "README.md",
+              "LICENSE",
+              "CONTRIBUTING.md",
+              "CODE_OF_CONDUCT.md",
+              "CHANGELOG.md",
+              "THIRD_PARTY_NOTICES.md",
+              "LICENSES/VideoMAEv2-LICENSE.txt",
+              ".github/ISSUE_TEMPLATE/bug_report.md",
+              ".github/PULL_REQUEST_TEMPLATE.md",
+          ]
+          for name in required:
+              path = Path(name)
+              assert path.is_file() and path.read_text().strip(), name
+
+          readme = Path("README.md").read_text()
+          assert "CC-BY-NC 4.0" in readme, "README must state the license"
+          assert "[LICENSE](LICENSE)" in readme, "README must link to LICENSE"
+
+          for name in required:
+              path = Path(name)
+              if path.suffix != ".md":
+                  continue
+              for link in re.findall(r"\[[^\]]*\]\(([^)]+)\)", path.read_text()):
+                  url = urlsplit(link)
+                  if url.scheme or url.netloc or not url.path:
+                      continue
+                  target = path.parent / unquote(url.path)
+                  assert target.exists(), f"{path}: missing link target {link}"
+
+          print("Repository documents and local links are valid.")
+          PY

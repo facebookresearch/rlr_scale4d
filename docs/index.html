@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<!--
+  Copyright (c) Meta Platforms, Inc. and affiliates.
+  All rights reserved.
+  
+  This source code is licensed under the license found in the
+  LICENSE file in the root directory of this source tree.
+-->
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <title>SCALE4D</title>
+  <meta name="description" content="SCALE4D: metric 4D modeling for embodied perception. One to three videos, with or without camera poses, encoded once and queried for metric 3D motion." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="SCALE4D | Metric 4D Modeling for Embodied Perception" />
+  <meta property="og:description" content="A metric 4D model that takes its scale from the cameras." />
+  <meta property="og:image" content="assets/hero_poster.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111'/%3E%3Cpath d='M6 22C12 21 15 9 26 10' fill='none' stroke='%23ff9a57' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&family=Outfit:wght@300;400;500;600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=20261124z" />
+</head>
+
+<body>
+
+<!-- Top bar: appears once the hero has scrolled away (js/main.js); the links keep the scroll spy's .scroll-dot/data-target -->
+<header class="topbar" id="topbar">
+  <div class="topbar-inner">
+    <a class="topbar-brand" href="#top" aria-label="SCALE4D, back to top">SCALE<span>4D</span></a>
+    <nav class="topbar-links" id="scrollNav" aria-label="Section navigation">
+      <a class="scroll-dot" href="#overview" data-target="overview">Overview</a>
+      <a class="scroll-dot" href="#explore" data-target="explore">Explore</a>
+      <a class="scroll-dot" href="#method" data-target="method">Method</a>
+      <a class="scroll-dot" href="#views" data-target="views">Zero-shot views</a>
+      <a class="scroll-dot" href="#cameras" data-target="cameras">Camera conditioning</a>
+      <a class="scroll-dot" href="#self-training" data-target="self-training">Self-training</a>
+      <a class="scroll-dot" href="#comparison" data-target="comparison">Benchmark comparison</a>
+      <a class="scroll-dot" href="#benchmarks" data-target="benchmarks">Leaderboard</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero" id="top">
+  <!-- 1080p (27 MB) on wide screens, 720p (12 MB) on phones and narrow windows -->
+  <video class="hero-video" id="heroVideo" autoplay muted playsinline preload="auto" poster="assets/hero_poster.jpg?v=20261124z">
+    <source src="assets/hero.mp4?v=20261124z" type="video/mp4" media="(min-width: 900px)" />
+    <source src="assets/hero_720.mp4?v=20261124z" type="video/mp4" />
+  </video>
+  <div class="hero-overlay"></div>
+
+  <div class="hero-content">
+    <h1 class="hero-title">SCALE<span class="hero-title-num">4D</span></h1>
+    <p class="hero-tagline">Metric 4D Modeling for Embodied Perception</p>
+    <p class="hero-authors">
+      <span class="author"><a href="https://lsn33096.github.io/index.html" target="_blank" rel="noopener">Di&nbsp;Liu</a><sup class="author-affiliations"><img class="affiliation-logo affiliation-logo--meta" src="assets/affiliations/meta.svg?v=20261124z" alt="Meta" /></sup></span> &nbsp;·&nbsp;
+      <span class="author"><a href="https://xuweiyichen.github.io/" target="_blank" rel="noopener">Xuweiyi&nbsp;Chen</a><sup class="author-affiliations"><img class="affiliation-logo affiliation-logo--meta" src="assets/affiliations/meta.svg?v=20261124z" alt="Meta" /><img class="affiliation-logo affiliation-logo--uva" src="assets/affiliations/uva.png?v=20261124z" alt="University of Virginia" /></sup></span> &nbsp;·&nbsp;
+      <span class="author"><a href="https://scholar.google.com/citations?user=c_o9GhsAAAAJ&amp;hl=en&amp;oi=ao" target="_blank" rel="noopener">Cheng&nbsp;Zhang</a><sup class="author-affiliations"><img class="affiliation-logo affiliation-logo--meta" src="assets/affiliations/meta.svg?v=20261124z" alt="Meta" /></sup></span> &nbsp;·&nbsp;
+      <span class="author"><a href="https://adamharley.com/" target="_blank" rel="noopener">Adam&nbsp;Harley</a><sup class="author-affiliations"><img class="affiliation-logo affiliation-logo--meta" src="assets/affiliations/meta.svg?v=20261124z" alt="Meta" /></sup></span> &nbsp;·&nbsp;
+      <span class="author"><a href="https://flycooler.com/" target="_blank" rel="noopener">Zhao&nbsp;Dong</a><sup class="author-affiliations"><img class="affiliation-logo affiliation-logo--meta" src="assets/affiliations/meta.svg?v=20261124z" alt="Meta" /></sup></span> &nbsp;·&nbsp;
+      <span class="author"><a href="https://tschmidt23.github.io/" target="_blank" rel="noopener">Tanner&nbsp;Schmidt</a><sup class="author-affiliations"><img class="affiliation-logo affiliation-logo--meta" src="assets/affiliations/meta.svg?v=20261124z" alt="Meta" /></sup></span> &nbsp;·&nbsp;
+      <span class="author"><a href="https://scholar.google.com/citations?user=EcUN5MQAAAAJ&amp;hl=en&amp;oi=ao" target="_blank" rel="noopener">David&nbsp;Caruso</a><sup class="author-affiliations"><img class="affiliation-logo affiliation-logo--meta" src="assets/affiliations/meta.svg?v=20261124z" alt="Meta" /></sup></span> &nbsp;·&nbsp;
+      <span class="author"><a href="https://scholar.google.com/citations?user=8u1nmVUAAAAJ&amp;hl=en&amp;oi=sra" target="_blank" rel="noopener">Pierre&nbsp;Moulon</a><sup class="author-affiliations"><img class="affiliation-logo affiliation-logo--meta" src="assets/affiliations/meta.svg?v=20261124z" alt="Meta" /></sup></span> &nbsp;·&nbsp;
+      <span class="author"><a href="https://shugaoma.github.io/" target="_blank" rel="noopener">Shugao&nbsp;Ma</a><sup class="author-affiliations"><img class="affiliation-logo affiliation-logo--meta" src="assets/affiliations/meta.svg?v=20261124z" alt="Meta" /></sup></span> &nbsp;·&nbsp;
+      <span class="author"><a href="https://www.cs.virginia.edu/~zc3bp/index.html" target="_blank" rel="noopener">Zezhou&nbsp;Cheng</a><sup class="author-affiliations"><img class="affiliation-logo affiliation-logo--uva" src="assets/affiliations/uva.png?v=20261124z" alt="University of Virginia" /></sup></span> &nbsp;·&nbsp;
+      <span class="author"><a href="https://scholar.google.com/citations?user=MhowvPkAAAAJ&amp;hl=en&amp;oi=ao" target="_blank" rel="noopener">Richard&nbsp;Newcombe</a><sup class="author-affiliations"><img class="affiliation-logo affiliation-logo--meta" src="assets/affiliations/meta.svg?v=20261124z" alt="Meta" /></sup></span> &nbsp;·&nbsp;
+      <span class="author"><a href="https://jakobengel.github.io/" target="_blank" rel="noopener">Jakob&nbsp;Julian&nbsp;Engel</a><sup class="author-affiliations"><img class="affiliation-logo affiliation-logo--meta" src="assets/affiliations/meta.svg?v=20261124z" alt="Meta" /></sup></span>
+      <br />
+      <span class="affiliation"><span class="institution"><img class="affiliation-logo affiliation-logo--meta" src="assets/affiliations/meta.svg?v=20261124z" alt="" />Reality Labs Research, Meta</span><span class="institution"><img class="affiliation-logo affiliation-logo--uva" src="assets/affiliations/uva.png?v=20261124z" alt="" />University of Virginia</span></span>
+    </p>
+    <!-- Resource links. arXiv and Paper: set href, drop is-pending / aria-disabled / tabindex once they are online.
+         Code and Checkpoints point at the private facebookresearch / Hugging Face repositories until release. -->
+    <div class="hero-actions">
+      <!-- live demo: demo.html forwards to the current Gradio link, which the demo's supervisor
+           (demo branch, evaluation/scale4d_demo/serve.py) writes to demo.json on the server; js/main.js shows this
+           button and points it straight at that link once demo.json is read (no demo.json, e.g. on GitHub Pages: no button) -->
+      <a class="btn btn--res btn--demo" id="demoBtn" href="demo.html" target="_blank" rel="noopener" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="fill"><path d="M8 5.2v13.6a.8.8 0 0 0 1.2.7l10.6-6.8a.8.8 0 0 0 0-1.4L9.2 4.5A.8.8 0 0 0 8 5.2z" /></svg>Demo</a>
+      <a class="btn btn--res is-pending" aria-disabled="true" tabindex="-1" title="Coming soon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h9l5 5v13H5z" /><path d="M14 3v5h5M8.5 13.5l7 5M15.5 13.5l-7 5" /></svg>arXiv</a>
+      <a class="btn btn--res is-pending" aria-disabled="true" tabindex="-1" title="Coming soon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h9l5 5v13H5z" /><path d="M14 3v5h5M8 13h8M8 17h6" /></svg>Paper</a>
+      <a class="btn btn--res" href="https://github.com/facebookresearch/rlr_scale4d" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="fill"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z" /></svg>Code</a>
+      <a class="btn btn--res" href="https://huggingface.co/facebook/SCALE4D" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8 20 7.4v9.2L12 21.2 4 16.6V7.4z" /><path d="M4 7.4 12 12l8-4.6M12 12v9.2" /></svg>Checkpoints</a>
+    </div>
+  </div>
+
+  <a class="scroll-hint" href="#overview" aria-label="Scroll to overview">Scroll</a>
+</section>
+
+<main>
+
+<section class="section" id="overview">
+  <div class="section-header">
+    <span class="section-num">01 / 08</span>
+    <h2>Embodied devices see the world in meters</h2>
+  </div>
+  <!-- the paper's Figure 1 (teaser_v2.pdf, public paper repo; 2026-11-24, user: "这个图改成最新头图"); the earlier
+       teaser stays as assets/fig/teaser.jpg -->
+  <figure class="figure figure--teaser">
+    <img src="assets/fig/teaser_v2.jpg?v=20261124z" width="2400" height="937" alt="Six scenes reconstructed by SCALE4D, each with rainbow 3D trajectories, a predicted distance between two marked points and a filmstrip of the query view: a dog walking (25.1 cm), a living room (17.5 cm), hands in a kitchen (20.2 cm) from smart glasses, and a robot gripper on a quilt (11.6 cm), a robot arm with a vacuum (15.0 cm) and a robot pushing a cloth (31.2 cm). Icons above each scene give the number of views and whether cameras were used." loading="lazy" />
+  </figure>
+  <p class="lead lead--abstract teaser-note">SCALE4D predicts dense metric 3D trajectories across embodied perception scenarios, supporting
+      varying view counts and optional camera conditioning. Cones
+      (<img class="cap-icon" src="assets/fig/teaser_cone_icon.png?v=20261124z" alt="cone" />) show supported view counts;
+      slashed circles (<img class="cap-icon" src="assets/fig/teaser_camera_off_icon.png?v=20261124z" alt="slashed circle" />)
+      mark disabled camera conditioning. Numbers indicate predicted 3D distances (cm) between marked points. Filmstrips
+      present frames from the query view.</p>
+
+  <div class="facts">
+    <div class="fact">
+      <span class="fact-k">Flexible inputs</span>
+      <span class="fact-v">any number of synchronized videos, with or without camera poses, one set of weights</span>
+    </div>
+    <div class="fact">
+      <span class="fact-k">Metric</span>
+      <span class="fact-v">3D positions and trajectories in meters, with no test-time scale fitting</span>
+    </div>
+    <div class="fact">
+      <span class="fact-k">Self-training</span>
+      <span class="fact-v">camera-conditioned predictions supervise RGB-only inference on unlabeled video</span>
+    </div>
+  </div>
+
+  <div class="supplementary-video">
+    <video controls playsinline preload="none" width="2560" height="1440" aria-label="SCALE4D supplementary video">
+      <source src="https://huggingface.co/facebook/SCALE4D/resolve/main/examples/supplementary_video/video/scale4d_supplementary_v23_1440p.mp4" type="video/mp4" />
+    </video>
+    <p class="stage-note"><a href="https://huggingface.co/facebook/SCALE4D/blob/main/examples/supplementary_video/video/scale4d_supplementary_v23_1440p.mp4" target="_blank" rel="noopener">Open supplementary video on Hugging Face</a></p>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<section class="section section--wide" id="explore">
+  <div class="section-header">
+    <span class="section-num">02 / 08</span>
+    <h2>Explore in 4D</h2>
+  </div>
+  <p class="res-caption">
+    Real recordings of people and robots. Pick a scene below, drag to orbit, or ride along with the input camera.
+  </p>
+
+  <div class="wild-stage" id="wildStage">
+    <iframe id="wildFrame" title="Interactive 3D view of the selected scene" allowfullscreen></iframe>
+    <div class="wild-poster" id="wildPoster" aria-hidden="true">
+      <img id="wildPosterImg" alt="" />
+      <div class="wild-progress"><i id="wildBar"></i></div>
+      <span id="wildMsg">Loading scene</span>
+    </div>
+  </div>
+  <div class="wild-style" id="wildStyle" role="group" aria-label="Display">
+    <button data-style="surface" aria-pressed="true">Surface</button>
+    <button data-style="points" aria-pressed="false">Point cloud</button>
+  </div>
+  <div class="scene-tabs wild-filter" id="wildFilter" role="group" aria-label="Filter scenes"></div>
+  <div class="wild-grid is-collapsed" id="wildGrid" role="tablist" aria-label="Scenes"></div>
+  <button class="link-btn wild-more" id="wildMore" hidden>Show all scenes</button>
+  <p class="stage-note">Geometry and motion are predicted; no depth sensor or 3D scan is used. Multi-view clips take the
+    dataset's cameras as input. White areas are hidden from the input camera at the frame shown.</p>
+</section>
+
+<hr class="divider" />
+
+<section class="section" id="method">
+  <div class="section-header">
+    <span class="section-num">03 / 08</span>
+    <h2>Metric 4D from any camera setup</h2>
+  </div>
+  <p class="res-caption">
+    SCALE4D encodes the videos once and answers dense point&ndash;time queries. Its architecture follows the measurements embodied devices provide.
+  </p>
+
+  <figure class="figure">
+    <img src="assets/fig/architecture.jpg?v=20261124z" alt="Architecture: multiview video, with an optional calibrated camera input, passes through a shared patch embedding and a multiview encoder (video self-attention and same-time view attention, each with MCPE, 40 blocks) into a scene representation. A query decoder (cross-attention over a multi-layer readout; queries encode the patch, the pixel and the view, source, target and camera times) predicts per query: 3D geometry and trajectories, metric depth, surface normals, 3D displacement and 2D tracks." loading="lazy" />
+  </figure>
+</section>
+
+<hr class="divider" />
+
+<section class="section section--wide" id="views">
+  <div class="section-header">
+    <span class="section-num">04 / 08</span>
+    <h2>Zero-shot multi view inference</h2>
+  </div>
+  <p class="res-caption">Trained with at most 3 views, test on more views as input.</p>
+  <div class="views-layout">
+    <div class="wild-stage views-stage" id="viewsStage">
+      <iframe id="viewsFrame" title="Interactive 3D view with 3 to 10 input views" allowfullscreen></iframe>
+      <div class="wild-poster" id="viewsPoster" aria-hidden="true">
+        <div class="wild-progress"><i id="viewsBar"></i></div>
+        <span id="viewsMsg">Loading scene</span>
+      </div>
+    </div>
+    <div class="views-panel">
+      <div class="scene-tabs" id="viewsClip" role="tablist" aria-label="Scene"></div>
+      <div class="views-count"><b id="viewsN">3</b><span>/ 10 views</span></div>
+      <div class="views-btns" id="viewsBtns" role="group" aria-label="Number of input views"></div>
+      <label class="views-gt"><input type="checkbox" id="viewsGT" checked /><i></i>Ground truth</label>
+      <div class="views-chart" id="viewsChart"></div>
+    </div>
+  </div>
+  <p class="stage-note">Two examples, selected from ten screened. Cameras on; dashed buttons are zero-shot. AJ on each
+    clip's ground-truth points.</p>
+</section>
+
+<hr class="divider" />
+
+<section class="section section--wide" id="cameras">
+  <div class="section-header">
+    <span class="section-num">05 / 08</span>
+    <h2>Optional camera conditioning</h2>
+  </div>
+  <p class="res-caption">Same weights, with or without cameras. Both sides share one camera and one clock: drag either one.</p>
+  <div class="scene-tabs" id="camCase" role="tablist" aria-label="Scene"></div>
+  <div class="pair" id="camPair">
+    <div class="pair-panes">
+      <div class="pair-pane">
+        <iframe title="Cameras on, three views: interactive 3D view"></iframe><span class="pair-tag">Cameras on · 3 views</span>
+        <div class="wild-poster" aria-hidden="true"><div class="wild-progress"><i></i></div><span>Loading scene</span></div>
+      </div>
+      <div class="pair-pane">
+        <iframe title="Cameras off, three views: interactive 3D view"></iframe><span class="pair-tag">Cameras off · 3 views</span>
+        <div class="wild-poster" aria-hidden="true"><div class="wild-progress"><i></i></div><span>Loading scene</span></div>
+      </div>
+    </div>
+    <div class="pair-bar">
+      <button class="play" id="camPlay" aria-label="Pause"><svg viewBox="0 0 16 16" aria-hidden="true"><path id="camPlayIcon" d="M4 2h3v12H4zM9 2h3v12H9z" /></svg></button>
+      <input id="camScrub" type="range" min="0" max="47" step="1" value="0" aria-label="Frame" />
+      <span class="pair-time" id="camTime">0 / 47</span>
+      <label class="views-gt"><input type="checkbox" id="camGT" checked /><i></i>Ground truth</label>
+      <button class="pair-fs" id="camFS" aria-label="Full screen"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg></button>
+    </div>
+  </div>
+  <p class="stage-note">Three input views in both modes. Selected examples.</p>
+</section>
+
+<hr class="divider" />
+
+<section class="section section--wide" id="self-training">
+  <div class="section-header">
+    <span class="section-num">06 / 08</span>
+    <h2>Camera-asymmetric self-training</h2>
+  </div>
+  <!-- left: the method figure (arXiv Fig. 4); right: the video's 3D example, controlled baseline | ours, one camera and one clock -->
+  <div class="st-layout">
+    <div class="st-fig">
+    <figure class="figure figure--self">
+    <img src="assets/fig/flywheel.jpg?v=20261124z" alt="Camera-asymmetry self-training. The teacher receives multi-view video with camera conditioning and produces a camera-conditioned 4D reconstruction; the student receives the same multi-view video with no camera conditioning and produces a camera-free 4D reconstruction. A distillation loss trains the student against the teacher's detached predictions (stop gradient), and the teacher is an EMA of the student." loading="lazy" />
+  </figure>
+      <p class="stage-note">
+    A camera-conditioned teacher supervises a student without camera conditioning using the same input views. The
+    teacher generates metric trajectory targets for the student, with its weights updated through an exponential
+    moving average (EMA) of the student.
+  </p>
+    </div>
+    <div class="st-demo">
+      <div class="pair pair--st" id="stPair">
+        <div class="pair-panes">
+          <div class="pair-pane">
+            <iframe title="Controlled baseline, cameras off: interactive 3D view"></iframe><span class="pair-tag">Controlled baseline</span>
+            <div class="wild-poster" aria-hidden="true"><div class="wild-progress"><i></i></div><span>Loading scene</span></div>
+          </div>
+          <div class="pair-pane">
+            <iframe title="Our self-training result, cameras off: interactive 3D view"></iframe><span class="pair-tag">Our self-training result</span>
+            <div class="wild-poster" aria-hidden="true"><div class="wild-progress"><i></i></div><span>Loading scene</span></div>
+          </div>
+        </div>
+        <div class="pair-bar">
+          <button class="play" id="stPlay" aria-label="Pause"><svg viewBox="0 0 16 16" aria-hidden="true"><path id="stPlayIcon" d="M4 2h3v12H4zM9 2h3v12H9z" /></svg></button>
+          <input id="stScrub" type="range" min="0" max="47" step="1" value="0" aria-label="Frame" />
+          <span class="pair-time" id="stTime">0 / 47</span>
+          <label class="views-gt"><input type="checkbox" id="stGT" checked /><i></i>Ground truth</label>
+          <button class="pair-fs" id="stFS" aria-label="Full screen"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg></button>
+        </div>
+      </div>
+      <p class="stage-note">A Show3D test clip of a hand holding a bottle: three views, cameras off at inference, the same starting
+        checkpoint for both. Green dots are ground truth on the held object.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<section class="section" id="comparison">
+  <div class="section-header">
+    <span class="section-num">07 / 08</span>
+    <h2>Benchmark comparison</h2>
+  </div>
+  <p class="res-caption">
+    Every method tracks the same pixels of the first frame. Both panes share one camera and one clock: drag either
+    to orbit and the other follows; press play to see the motion.
+  </p>
+
+  <div class="scene-tabs scene-tabs--light" id="clipTabs" role="tablist" aria-label="Clips"></div>
+  <div class="method-pills" id="methodPills" role="group" aria-label="Baseline"></div>
+
+  <div class="duo" id="duo">
+    <div class="duo-pane">
+      <canvas id="duoL" aria-label="The selected baseline's points in 3D"></canvas>
+      <span class="cmp-tag cmp-tag--l" id="cmpBaseTag"></span>
+    </div>
+    <div class="duo-pane">
+      <canvas id="duoR" aria-label="Our points in 3D"></canvas>
+      <span class="cmp-tag cmp-tag--r">Ours</span>
+    </div>
+    <div class="duo-inset" aria-hidden="true"><div class="stage-inset-img" id="duoInset"></div></div>
+    <div class="stage-loading" id="duoLoading">Loading scene</div>
+    <div class="stage-bar">
+      <button class="play" id="duoPlay" aria-label="Pause">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path id="duoPlayIcon" d="M4 2h3v12H4zM9 2h3v12H9z" /></svg>
+      </button>
+      <input id="duoScrub" type="range" min="0" max="47" step="0.01" value="0" aria-label="Frame" />
+      <span class="stage-time" id="duoTime">0 / 47</span>
+    </div>
+  </div>
+  <p class="stage-note" id="cmpCaption"></p>
+</section>
+
+<hr class="divider" />
+
+<section class="section" id="benchmarks">
+  <div class="section-header">
+    <span class="section-num">08 / 08</span>
+    <h2>Leaderboard</h2>
+  </div>
+  <p class="res-caption">
+    Every score below comes from the paper's tables. The metric rows use no ground-truth scale fitting at test time.
+  </p>
+
+  <div class="chart-card">
+    <div class="filters" id="filters"></div>
+    <div class="chart-head">
+      <h3 id="chartTitle"></h3>
+      <span id="chartDir"></span>
+    </div>
+    <div class="bars" id="bars"></div>
+    <div class="chart-table" id="chartTable" hidden></div>
+    <div class="chart-foot">
+      <p id="chartNote"></p>
+      <button class="link-btn" id="tableToggle" aria-pressed="false">Show table</button>
+    </div>
+  </div>
+  <div class="tooltip" id="tooltip" role="status" hidden></div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <p class="footer-title">SCALE4D</p>
+  <p>Metric 4D Modeling for Embodied Perception</p>
+  <p class="footer-aff">Reality Labs Research, Meta</p>
+  <p>Copyright ©2026 Meta Platforms, Inc. and affiliates.</p>
+  <p><a href="license.html">CC-BY-NC 4.0 and third party licenses</a></p>
+  <p><a href="https://opensource.fb.com/legal/privacy/">Privacy Policy</a> · <a href="https://opensource.fb.com/legal/terms/">Terms of Use</a></p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegmentsGeometry.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineMaterial.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegments2.js"></script>
+<script src="js/viewer4d.js?v=20261124z"></script>
+<script src="js/main.js?v=20261124z"></script>
+</body>
+</html>
