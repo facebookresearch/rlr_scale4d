@@ -21,7 +21,7 @@ Differences from the upstream branch, made by `tools/sync_pages.py`:
 - Every 3D viewer's data is in this folder, the 74-scene gallery included, so the page needs no other host. To stay
   under GitHub Pages' 1 GB, input frames are WebP (quality 80) instead of JPEG, and files the page never requests are
   left out (the old Viewer4D scenes, the 2D comparison panels, the 160k side-by-side scenes, and the 1- and 2-view
-  scenes of the zero-shot views section). The script stops if the folder reaches 980 MB. The same gallery is also
+  scenes of the zero-shot views section). The script stops if the folder reaches 990 MB. The same gallery is also
   archived in `facebook/SCALE4D` `examples/website_gallery` on Hugging Face.
 - The footer links the license page (`license.html`, `LICENSE`, `LICENSES/`).
 - `demo.json` holds the live demo's Gradio link, which `js/main.js` reads to show the Demo button and point it there
@@ -101,7 +101,8 @@ synchronized with the repository's corresponding files.
   The three-stage data-engine wheel was removed with it, because the arXiv no longer has a data-engine section.
 - The overview is the arXiv abstract without its release sentence.
 - Figures are the latest Internal paper's PDFs rendered to JPEG: teaser_v2, main_v3 (architecture), data_flywheel. Re-render them after the paper's figures change.
-- The Paper button is inactive until there is a link (`aria-disabled` in `index.html`).
+- The Paper button opens `scale4d.pdf`, the arXiv version of the paper (22 pages, 24 MB, added 2026-11-25). The arXiv
+  button stays inactive until there is a link (`aria-disabled` in `index.html`).
 
 ## Regenerating assets
 
