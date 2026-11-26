@@ -13,7 +13,7 @@
 <p>
   <a href="https://facebookresearch.github.io/rlr_scale4d/"><strong>Project Page</strong></a>
   &nbsp;·&nbsp;
-  <a title="arXiv publication pending"><strong>Technical Report</strong></a>
+  <a href="https://facebookresearch.github.io/rlr_scale4d/scale4d.pdf"><strong>Technical Report</strong></a>
   &nbsp;·&nbsp;
   <a title="Paper publication pending"><strong>Paper</strong></a>
   &nbsp;·&nbsp;
