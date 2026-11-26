@@ -13,9 +13,9 @@
 <p>
   <a href="https://facebookresearch.github.io/rlr_scale4d/"><strong>Project Page</strong></a>
   &nbsp;·&nbsp;
-  <a href="" title="arXiv publication pending"><strong>Technical Report</strong></a>
+  <a title="arXiv publication pending"><strong>Technical Report</strong></a>
   &nbsp;·&nbsp;
-  <a href="" title="Paper publication pending"><strong>Paper</strong></a>
+  <a title="Paper publication pending"><strong>Paper</strong></a>
   &nbsp;·&nbsp;
   <a href="https://facebookresearch.github.io/rlr_scale4d/demo.html"><strong>Demo</strong></a>
   &nbsp;·&nbsp;
@@ -31,10 +31,11 @@
 
 ## Overview
 
-SCALE4D models metric 4D geometry and motion from single- or multi-view video,
-with optional camera poses. Visit the [project page](https://facebookresearch.github.io/rlr_scale4d/)
-for interactive visualizations and the [Hugging Face repository](https://huggingface.co/facebook/SCALE4D)
-for supplementary examples and data.
+Metric 3D geometry and motion are essential for embodied reasoning.
+Yet existing feedforward 4D models underuse synchronized views and calibrated
+cameras available to embodied systems. We introduce **SCALE4D**, a unified
+feedforward model that predicts metric 3D geometry and trajectories from single-
+or multiview videos, with optional camera conditioning.
 
 ## Contributing
 
